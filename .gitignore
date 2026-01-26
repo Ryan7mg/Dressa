@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Large data files (stored separately / use Git LFS)
+dress_images/
+embeddings/
+uploads/
+
+# Database (generated at runtime)
+*.db
+user_study.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
