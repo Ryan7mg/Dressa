@@ -1,0 +1,20 @@
+# Dressa App - Requirements
+# Install with: pip install -r requirements.txt
+
+# Core ML/DL
+torch>=2.0.0
+torchvision>=0.15.0
+
+# CLIP Models
+transformers>=4.30.0
+open-clip-torch>=2.20.0
+
+# Web Interface
+gradio>=4.0.0
+
+# Image Processing
+Pillow>=10.0.0
+
+# Numerical Computing
+numpy>=1.24.0
+scikit-learn>=1.3.0
