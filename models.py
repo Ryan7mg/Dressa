@@ -39,15 +39,13 @@ class ModelManager:
             'embedding_dim': 512
         },
         'marqo_fashion_clip': {
-            'type': 'openclip',
-            'model_name': 'ViT-B-16',
-            'pretrained': 'hf-hub:Marqo/marqo-fashionCLIP',
+            'type': 'openclip_hf',  # HuggingFace hub model
+            'hf_hub': 'hf-hub:Marqo/marqo-fashionCLIP',
             'embedding_dim': 512
         },
         'marqo_fashion_siglip': {
-            'type': 'openclip',
-            'model_name': 'ViT-B-16-SigLIP',
-            'pretrained': 'hf-hub:Marqo/marqo-fashionSigLIP',
+            'type': 'openclip_hf',  # HuggingFace hub model
+            'hf_hub': 'hf-hub:Marqo/marqo-fashionSigLIP',
             'embedding_dim': 512
         }
     }
@@ -106,18 +104,34 @@ class ModelManager:
 
         if config['type'] == 'openclip':
             self._load_openclip_model(model_name, config)
+        elif config['type'] == 'openclip_hf':
+            self._load_openclip_hf_model(model_name, config)
         elif config['type'] == 'transformers':
             self._load_transformers_model(model_name, config)
 
         logger.info(f"{model_name} loaded successfully")
 
     def _load_openclip_model(self, model_name: str, config: dict):
-        """Load an OpenCLIP-based model."""
+        """Load an OpenCLIP-based model (standard pretrained)."""
         import open_clip
 
         model, _, preprocess = open_clip.create_model_and_transforms(
             config['model_name'],
             pretrained=config['pretrained']
+        )
+        model = model.to(self.device)
+        model.eval()
+
+        self.models[model_name] = model
+        self.preprocessors[model_name] = preprocess
+
+    def _load_openclip_hf_model(self, model_name: str, config: dict):
+        """Load an OpenCLIP model from HuggingFace hub (Marqo models)."""
+        import open_clip
+
+        # Use create_model_from_pretrained for HF hub models
+        model, preprocess = open_clip.create_model_from_pretrained(
+            config['hf_hub']
         )
         model = model.to(self.device)
         model.eval()
@@ -170,7 +184,7 @@ class ModelManager:
         config = self.MODEL_CONFIGS[model_name]
 
         with torch.no_grad():
-            if config['type'] == 'openclip':
+            if config['type'] in ('openclip', 'openclip_hf'):
                 embedding = self._encode_openclip(image, model_name)
             else:
                 embedding = self._encode_transformers(image, model_name)
