@@ -197,6 +197,46 @@ def union_and_randomize(
     return combined
 
 
+def union_and_randomize_with_provenance(
+    results_dict: Dict[str, List[Tuple[str, float]]],
+    query_image_id: str
+) -> List[Dict]:
+    """
+    Combine results from all models with provenance (rank per model) and deterministic shuffle.
+
+    Args:
+        results_dict: Dict mapping model_name -> list of (image_path, score)
+        query_image_id: Unique identifier for the query image (used for deterministic shuffle)
+
+    Returns:
+        List of dicts with keys:
+            - 'image_path': path to the image
+            - 'provenance': dict mapping model_name -> rank (1-indexed)
+            - 'display_position': position in the shuffled display order
+    """
+    image_info = {}
+
+    for model_name, results in results_dict.items():
+        for rank, (image_path, score) in enumerate(results, start=1):
+            if image_path not in image_info:
+                image_info[image_path] = {
+                    'image_path': image_path,
+                    'provenance': {}
+                }
+            image_info[image_path]['provenance'][model_name] = rank
+
+    combined = list(image_info.values())
+
+    # Deterministic shuffle based on query image ID
+    seed = hash(query_image_id) & 0xFFFFFFFF
+    random.Random(seed).shuffle(combined)
+
+    for pos, item in enumerate(combined):
+        item['display_position'] = pos
+
+    return combined
+
+
 def get_image_full_path(
     relative_path: str,
     images_dir: Optional[Path] = None
