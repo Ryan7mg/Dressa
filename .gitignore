@@ -30,3 +30,6 @@ user_study.db
 
 # Logs
 *.log
+
+# Context files
+MASTER_CONTEXT.md
