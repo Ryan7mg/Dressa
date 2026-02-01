@@ -199,14 +199,14 @@ def union_and_randomize(
 
 def union_and_randomize_with_provenance(
     results_dict: Dict[str, List[Tuple[str, float]]],
-    query_image_id: str
+    query_image_hash: str
 ) -> List[Dict]:
     """
     Combine results from all models with provenance (rank per model) and deterministic shuffle.
 
     Args:
         results_dict: Dict mapping model_name -> list of (image_path, score)
-        query_image_id: Unique identifier for the query image (used for deterministic shuffle)
+        query_image_hash: Hash of query image content (used for deterministic shuffle)
 
     Returns:
         List of dicts with keys:
@@ -216,8 +216,17 @@ def union_and_randomize_with_provenance(
     """
     image_info = {}
 
+    # Log per-model results
+    logger.info("=" * 60)
+    logger.info("PER-MODEL RETRIEVAL RESULTS:")
+    logger.info("=" * 60)
+
     for model_name, results in results_dict.items():
+        logger.info(f"\n[{model_name}] Top {len(results)} results:")
         for rank, (image_path, score) in enumerate(results, start=1):
+            img_name = Path(image_path).name
+            logger.info(f"  Rank {rank}: {img_name} (score: {score:.4f})")
+
             if image_path not in image_info:
                 image_info[image_path] = {
                     'image_path': image_path,
@@ -227,12 +236,39 @@ def union_and_randomize_with_provenance(
 
     combined = list(image_info.values())
 
-    # Deterministic shuffle based on query image ID
-    seed = hash(query_image_id) & 0xFFFFFFFF
+    # Log duplicates (images returned by multiple models)
+    logger.info("\n" + "=" * 60)
+    logger.info("DUPLICATE ANALYSIS (images returned by multiple models):")
+    logger.info("=" * 60)
+    duplicates = [item for item in combined if len(item['provenance']) > 1]
+    if duplicates:
+        for item in duplicates:
+            img_name = Path(item['image_path']).name
+            models_ranks = ", ".join([f"{m}@rank{r}" for m, r in item['provenance'].items()])
+            logger.info(f"  {img_name}: {models_ranks}")
+        logger.info(f"\nTotal duplicates: {len(duplicates)} / {len(combined)} unique images")
+    else:
+        logger.info("  No duplicates found")
+
+    # Deterministic shuffle based on query image hash
+    seed = hash(query_image_hash) & 0xFFFFFFFF
+    logger.info(f"\nShuffle seed (from image hash): {seed}")
     random.Random(seed).shuffle(combined)
 
     for pos, item in enumerate(combined):
         item['display_position'] = pos
+
+    # Log final order
+    logger.info("\n" + "=" * 60)
+    logger.info("FINAL DISPLAY ORDER (after shuffle):")
+    logger.info("=" * 60)
+    for item in combined[:10]:  # Show first 10
+        img_name = Path(item['image_path']).name
+        prov = ", ".join([f"{m}@{r}" for m, r in item['provenance'].items()])
+        logger.info(f"  Pos {item['display_position']}: {img_name} [{prov}]")
+    if len(combined) > 10:
+        logger.info(f"  ... and {len(combined) - 10} more")
+    logger.info("=" * 60 + "\n")
 
     return combined
 
