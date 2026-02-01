@@ -10,6 +10,7 @@ Handles:
 
 import sqlite3
 import uuid
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any
@@ -61,7 +62,7 @@ class Database:
                 )
             """)
 
-            # Ratings table
+            # Ratings table (legacy, kept for backward compatibility)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS ratings (
                     rating_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,6 +74,20 @@ class Database:
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(user_id),
                     FOREIGN KEY (upload_id) REFERENCES uploads(upload_id)
+                )
+            """)
+
+            # New evaluation_ratings table with provenance
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS evaluation_ratings (
+                    rating_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    upload_id TEXT NOT NULL,
+                    result_image_id TEXT NOT NULL,
+                    rating TEXT NOT NULL,
+                    provenance TEXT NOT NULL,
+                    display_position INTEGER,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
 
@@ -292,6 +307,64 @@ class Database:
             )
             result = cursor.fetchone()
             return result['count'] > 0
+
+    # ==================== Evaluation Rating Methods ====================
+
+    def save_evaluation_rating(
+        self,
+        user_id: str,
+        upload_id: str,
+        result_image_id: str,
+        rating: str,
+        provenance: dict,
+        display_position: int
+    ):
+        """
+        Save a user's evaluation rating with provenance information.
+
+        Args:
+            user_id: ID of the user
+            upload_id: ID of the query image upload
+            result_image_id: Path/ID of the result image being rated
+            rating: 'similar' or 'not_similar'
+            provenance: Dict mapping model_name -> rank (1-indexed)
+            display_position: Position in the shuffled display order
+        """
+        if rating not in ('similar', 'not_similar'):
+            raise ValueError(f"Invalid rating: {rating}. "
+                           f"Must be 'similar' or 'not_similar'")
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO evaluation_ratings
+                (user_id, upload_id, result_image_id, rating, provenance, display_position)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (user_id, upload_id, result_image_id, rating,
+                  json.dumps(provenance), display_position))
+            conn.commit()
+
+        # Increment upload's rating count
+        self.increment_upload_ratings(upload_id)
+
+        logger.info(f"Saved evaluation rating: {rating} for {result_image_id} "
+                   f"(position {display_position}, provenance: {provenance})")
+
+    def get_evaluation_ratings(self, upload_id: str) -> List[Dict]:
+        """Get all evaluation ratings for an upload."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """SELECT * FROM evaluation_ratings
+                   WHERE upload_id = ?
+                   ORDER BY timestamp""",
+                (upload_id,)
+            )
+            rows = [dict(row) for row in cursor.fetchall()]
+            # Parse provenance JSON
+            for row in rows:
+                row['provenance'] = json.loads(row['provenance'])
+            return rows
 
     # ==================== Analytics Methods ====================
 

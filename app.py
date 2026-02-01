@@ -21,7 +21,8 @@ import os
 from models import ModelManager
 from utils import (
     load_embeddings, search_similar, search_all_models,
-    union_and_randomize, append_to_embeddings, get_image_full_path,
+    union_and_randomize, union_and_randomize_with_provenance,
+    append_to_embeddings, get_image_full_path,
     EMBEDDING_FILES
 )
 from database import Database
@@ -43,7 +44,7 @@ model_manager = None
 db = None
 
 # Constants
-TOP_K = 10  # Results per model
+TOP_K = 5  # Results per model
 CORPUS_THRESHOLD = 5  # Ratings needed before adding to corpus
 
 
@@ -95,7 +96,7 @@ def search_similar_dresses(
     """
     Search for similar dresses using all 4 models.
 
-    Returns list of result dicts for the gallery.
+    Returns list of result dicts for the gallery with provenance.
     """
     global model_manager
 
@@ -115,8 +116,8 @@ def search_similar_dresses(
     logger.info("Searching corpus...")
     results_dict = search_all_models(query_embeddings, top_k=TOP_K)
 
-    # Union and randomize
-    combined_results = union_and_randomize(results_dict)
+    # Union and randomize with provenance (deterministic based on upload_id)
+    combined_results = union_and_randomize_with_provenance(results_dict, upload_id)
 
     logger.info(f"Found {len(combined_results)} unique results")
 
@@ -314,23 +315,19 @@ def create_app():
                 return rated_images, "Please select an image first.", gr.update()
 
             result = results[selected_index]
-            image_path = result['image_path']
 
-            # Get which models returned this result
-            models = result['models']
-
-            # Save rating for each model that returned this result
-            for model in models:
-                db.save_rating(
-                    user_id=user_id,
-                    upload_id=upload_id,
-                    result_image_path=image_path,
-                    model=model,
-                    rating=rating
-                )
+            # Save single evaluation rating with provenance
+            db.save_evaluation_rating(
+                user_id=user_id,
+                upload_id=upload_id,
+                result_image_id=result['image_path'],
+                rating=rating,
+                provenance=result['provenance'],
+                display_position=result['display_position']
+            )
 
             # Update rated images set
-            full_path = str(get_image_full_path(image_path))
+            full_path = str(get_image_full_path(result['image_path']))
             new_rated = rated_images.copy()
             new_rated.add(full_path)
 
