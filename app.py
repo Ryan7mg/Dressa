@@ -11,6 +11,7 @@ Main application that:
 
 import gradio as gr
 import numpy as np
+import hashlib
 from PIL import Image
 from pathlib import Path
 from datetime import datetime
@@ -88,6 +89,13 @@ def save_uploaded_image(image: np.ndarray, user_id: str) -> str:
     return str(filepath)
 
 
+def compute_image_hash(image: np.ndarray) -> str:
+    """Compute a deterministic hash from image content."""
+    # Use a downsampled version for speed, but still unique per image
+    small = Image.fromarray(image).resize((64, 64)).tobytes()
+    return hashlib.md5(small).hexdigest()
+
+
 def search_similar_dresses(
     image: np.ndarray,
     user_id: str,
@@ -105,6 +113,10 @@ def search_similar_dresses(
         logger.info("Loading models for first search...")
         model_manager.load_all_models()
 
+    # Compute image hash for deterministic shuffle
+    image_hash = compute_image_hash(image)
+    logger.info(f"Image hash: {image_hash}")
+
     # Convert to PIL
     pil_image = Image.fromarray(image)
 
@@ -116,8 +128,8 @@ def search_similar_dresses(
     logger.info("Searching corpus...")
     results_dict = search_all_models(query_embeddings, top_k=TOP_K)
 
-    # Union and randomize with provenance (deterministic based on upload_id)
-    combined_results = union_and_randomize_with_provenance(results_dict, upload_id)
+    # Union and randomize with provenance (deterministic based on image content)
+    combined_results = union_and_randomize_with_provenance(results_dict, image_hash)
 
     logger.info(f"Found {len(combined_results)} unique results")
 
