@@ -12,12 +12,14 @@ Main application that:
 import gradio as gr
 import numpy as np
 import hashlib
+import base64
 from PIL import Image
 from pathlib import Path
 from datetime import datetime
 import shutil
 import logging
 import os
+import io
 
 from models import ModelManager
 from utils import (
@@ -32,8 +34,8 @@ from database import Database
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Paths
-APP_DIR = Path(__file__).parent
+# Paths - use resolve() for consistent absolute paths
+APP_DIR = Path(__file__).parent.resolve()
 UPLOADS_DIR = APP_DIR / "uploads"
 IMAGES_DIR = APP_DIR / "dress_images"
 
@@ -183,18 +185,79 @@ def add_to_corpus(upload_id: str, filepath: str):
 
 # ==================== Gradio Interface ====================
 
+# JavaScript for toggle selection functionality (passed to launch() for Gradio 6.0+)
+TOGGLE_JS = """
+function toggleSelection(index) {
+    const item = document.querySelector(`[data-index="${index}"]`);
+    if (!item) return;
+    item.classList.toggle('selected');
+
+    // Get all selected indices
+    const selected = [...document.querySelectorAll('.result-item.selected')]
+        .map(el => parseInt(el.dataset.index));
+
+    console.log('Selected indices:', selected);
+
+    // Find the textbox by elem_id - Gradio wraps it in a div with the ID
+    let input = null;
+    const container = document.getElementById('selected-indices-input');
+    if (container) {
+        input = container.querySelector('textarea') || container.querySelector('input');
+        console.log('Found container, input:', input);
+    }
+
+    // Fallback: search all textareas
+    if (!input) {
+        document.querySelectorAll('textarea').forEach(el => {
+            console.log('Textarea value:', el.value);
+            if (el.value !== undefined && el.value.startsWith('[')) {
+                input = el;
+            }
+        });
+    }
+
+    if (input) {
+        console.log('Updating input from', input.value, 'to', JSON.stringify(selected));
+        input.value = JSON.stringify(selected);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        // Also try focus/blur to trigger Gradio
+        input.focus();
+        input.blur();
+    } else {
+        console.log('Could not find input element');
+    }
+
+    // Find submit button by text content
+    let submitBtn = null;
+    document.querySelectorAll('button').forEach(btn => {
+        if (btn.textContent && btn.textContent.includes('Submit')) {
+            submitBtn = btn;
+        }
+    });
+
+    if (submitBtn) {
+        console.log('Found submit button, updating text');
+        submitBtn.textContent = `Submit (${selected.length} selected)`;
+    } else {
+        console.log('Could not find submit button');
+    }
+}
+window.toggleSelection = toggleSelection;
+"""
+
 def create_app():
     """Create the Gradio app interface."""
 
     # Session state stored in gr.State
-    with gr.Blocks(title="Dressa - Dress Similarity Study", theme=gr.themes.Soft()) as app:
+    with gr.Blocks(title="Dressa - Dress Similarity Study") as app:
 
         # State variables
         user_id_state = gr.State(value=None)
         upload_id_state = gr.State(value=None)
         current_results_state = gr.State(value=[])
-        selected_index_state = gr.State(value=None)
-        rated_images_state = gr.State(value=set())
+        selected_indices_state = gr.State(value=[])  # List of selected image indices
+        gallery_images_state = gr.State(value=[])  # Store gallery image paths
 
         # Header
         gr.Markdown("""
@@ -203,7 +266,7 @@ def create_app():
         **How it works:**
         1. Upload a photo of a dress from your wardrobe
         2. Browse similar dresses found by our AI
-        3. Rate each result: **Similar** or **Not Similar**
+        3. Tap dresses that look similar to yours
 
         Your ratings help us improve fashion search for everyone!
         """)
@@ -226,40 +289,178 @@ def create_app():
                 gr.Markdown("### Similar Dresses")
                 progress_text = gr.Markdown("Upload an image to start searching...")
 
-                gallery = gr.Gallery(
-                    label="Click an image to rate it",
-                    columns=5,
-                    rows=3,
-                    height="auto",
-                    object_fit="contain",
-                    allow_preview=True
+                # Instructions for selection
+                selection_instructions = gr.Markdown(
+                    "**Tap the dresses that are similar to yours. Tap again to deselect. "
+                    "When you are done, press Submit.**",
+                    visible=False
                 )
 
-        # Rating section (appears after clicking image)
-        with gr.Row(visible=False) as rating_row:
-            with gr.Column():
-                selected_image = gr.Image(
-                    label="Selected Image",
-                    height=300,
-                    interactive=False
+                # Custom HTML grid for toggle selection
+                results_grid_html = gr.HTML(value="", elem_id="results-grid-container")
+
+                # Hidden textbox to communicate selected indices from JS to Python
+                selected_indices_input = gr.Textbox(
+                    value="[]",
+                    visible=False,
+                    elem_id="selected-indices-input"
                 )
-            with gr.Column():
-                gr.Markdown("### Is this dress similar to yours?")
-                with gr.Row():
-                    similar_btn = gr.Button("Similar", variant="primary", size="lg")
-                    not_similar_btn = gr.Button("Not Similar", variant="secondary", size="lg")
-                rating_status = gr.Markdown("")
+
+                # Submit button - always interactive (0 selected is valid = none similar)
+                submit_btn = gr.Button(
+                    "Submit (0 selected)",
+                    variant="primary",
+                    size="lg",
+                    visible=False,
+                    interactive=True,
+                    elem_id="submit-btn"
+                )
+
+                # Status message
+                submit_status = gr.Markdown("")
 
         # ==================== Event Handlers ====================
+
+        def generate_results_grid_html(gallery_images: list, selected_indices: list) -> str:
+            """Generate HTML for the results grid with toggle selection."""
+            if not gallery_images:
+                return ""
+
+            # CSS styles
+            css = """
+            <style>
+            .results-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+                padding: 12px;
+                padding-bottom: 20px;
+            }
+
+            @media (min-width: 768px) {
+                .results-grid {
+                    grid-template-columns: repeat(4, 1fr);
+                }
+            }
+
+            @media (min-width: 1024px) {
+                .results-grid {
+                    grid-template-columns: repeat(5, 1fr);
+                }
+            }
+
+            .result-item {
+                position: relative;
+                aspect-ratio: 3/4;
+                cursor: pointer;
+                border-radius: 8px;
+                overflow: hidden;
+                border: 3px solid transparent;
+                transition: border-color 0.2s, transform 0.1s;
+                -webkit-tap-highlight-color: transparent;
+                user-select: none;
+                background: #f0f0f0;
+            }
+
+            .result-item:hover {
+                transform: scale(1.02);
+            }
+
+            .result-item:active {
+                transform: scale(0.98);
+            }
+
+            .result-item img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                pointer-events: none;
+            }
+
+            .result-item.selected {
+                border-color: #22c55e;
+                box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3);
+            }
+
+            .result-item.selected::after {
+                content: '';
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                width: 32px;
+                height: 32px;
+                background: #22c55e url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E") center/60% no-repeat;
+                border-radius: 50%;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            }
+
+            .result-item .index-badge {
+                position: absolute;
+                bottom: 8px;
+                left: 8px;
+                background: rgba(0,0,0,0.7);
+                color: white;
+                padding: 4px 10px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 500;
+            }
+
+            /* Touch-friendly minimum size */
+            @media (max-width: 767px) {
+                .result-item {
+                    min-height: 140px;
+                }
+            }
+            </style>
+            """
+
+            # JavaScript - no separate script tag needed, use inline handlers
+
+            # Generate image grid with base64 encoded images
+            grid_items = []
+            for i, img_path in enumerate(gallery_images):
+                selected_class = "selected" if i in selected_indices else ""
+                # Convert image to base64 data URI
+                try:
+                    with Image.open(img_path) as img:
+                        # Resize for web display (max 400px width)
+                        img.thumbnail((400, 600), Image.Resampling.LANCZOS)
+                        buffer = io.BytesIO()
+                        img.save(buffer, format='JPEG', quality=85)
+                        img_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+                        img_src = f"data:image/jpeg;base64,{img_base64}"
+                except Exception as e:
+                    logger.error(f"Failed to load image {img_path}: {e}")
+                    continue
+                grid_items.append(f'''
+                <div class="result-item {selected_class}" data-index="{i}" onclick="toggleSelection({i})">
+                    <img src="{img_src}" alt="Dress {i+1}">
+                    <span class="index-badge">{i+1}</span>
+                </div>
+                ''')
+
+            html = f"""
+            {css}
+            <div class="results-grid">
+                {''.join(grid_items)}
+            </div>
+            """
+
+            return html
 
         def on_search(image, user_id, upload_id):
             """Handle search button click."""
             if image is None:
                 return (
-                    user_id, upload_id, [], [], set(),
+                    user_id, upload_id, [], [], [],
                     "Please upload an image first.",
                     "Upload an image to start searching...",
-                    gr.update(visible=False)
+                    gr.update(visible=False),  # selection_instructions
+                    "",  # results_grid_html
+                    "[]",  # selected_indices_input
+                    gr.update(visible=False, interactive=False),  # submit_btn
+                    ""  # submit_status
                 )
 
             # Create user if needed
@@ -273,7 +474,6 @@ def create_app():
             logger.info(f"New upload: {upload_id}")
 
             # Search for similar dresses
-            status = "Searching... (this may take a moment on first run)"
             results = search_similar_dresses(image, user_id, upload_id)
 
             # Get gallery images
@@ -281,67 +481,105 @@ def create_app():
 
             if not gallery_images:
                 return (
-                    user_id, upload_id, results, [], set(),
+                    user_id, upload_id, results, [], [],
                     "Search complete, but no images found. Check embeddings files.",
                     "No results found.",
-                    gr.update(visible=False)
+                    gr.update(visible=False),
+                    "",
+                    "[]",
+                    gr.update(visible=False, interactive=False),
+                    ""
                 )
 
-            progress = f"Found **{len(gallery_images)}** similar dresses. Click any image to rate it."
+            progress = f"Found **{len(gallery_images)}** similar dresses."
+
+            # Generate HTML grid
+            grid_html = generate_results_grid_html(gallery_images, [])
 
             return (
-                user_id, upload_id, results, gallery_images, set(),
+                user_id, upload_id, results, [], gallery_images,
                 "Search complete!",
                 progress,
-                gr.update(visible=False)
+                gr.update(visible=True),  # selection_instructions
+                grid_html,  # results_grid_html
+                "[]",  # selected_indices_input
+                gr.update(visible=True, interactive=True, value="Submit (0 selected)"),  # submit_btn
+                ""  # submit_status
             )
 
-        def on_gallery_select(evt: gr.SelectData, results, rated_images):
-            """Handle gallery image selection."""
-            if not results or evt.index >= len(results):
-                return None, None, gr.update(visible=False), ""
+        def on_selection_change(selected_indices_json, gallery_images):
+            """Handle selection change from JavaScript."""
+            import json
+            try:
+                selected_indices = json.loads(selected_indices_json)
+            except (json.JSONDecodeError, TypeError):
+                selected_indices = []
 
-            selected_result = results[evt.index]
-            image_path = get_image_full_path(selected_result['image_path'])
-
-            # Check if already rated
-            if str(image_path) in rated_images:
-                return (
-                    evt.index, str(image_path),
-                    gr.update(visible=True),
-                    "You already rated this image."
-                )
+            count = len(selected_indices)
+            btn_text = f"Submit ({count} selected)"
 
             return (
-                evt.index, str(image_path),
-                gr.update(visible=True),
-                ""
+                selected_indices,
+                gr.update(value=btn_text, interactive=True)  # Always interactive - 0 selected is valid
             )
 
-        def on_rate(
-            rating: str,
-            user_id, upload_id, results, selected_index, rated_images
-        ):
-            """Handle rating submission."""
-            if selected_index is None or not results:
-                return rated_images, "Please select an image first.", gr.update()
+        def on_submit(user_id, upload_id, results, selected_indices_json, gallery_images):
+            """Handle submit button click - save all ratings."""
+            import json
 
-            result = results[selected_index]
+            logger.info("=" * 50)
+            logger.info("SUBMIT BUTTON CLICKED")
+            logger.info(f"User ID: {user_id}")
+            logger.info(f"Upload ID: {upload_id}")
+            logger.info(f"Selected indices JSON: {selected_indices_json}")
 
-            # Save single evaluation rating with provenance
-            db.save_evaluation_rating(
-                user_id=user_id,
-                upload_id=upload_id,
-                result_image_id=result['image_path'],
-                rating=rating,
-                provenance=result['provenance'],
-                display_position=result['display_position']
-            )
+            try:
+                selected_indices = json.loads(selected_indices_json)
+            except (json.JSONDecodeError, TypeError):
+                selected_indices = []
 
-            # Update rated images set
-            full_path = str(get_image_full_path(result['image_path']))
-            new_rated = rated_images.copy()
-            new_rated.add(full_path)
+            logger.info(f"Parsed selected indices: {selected_indices}")
+            logger.info(f"Total results: {len(results) if results else 0}")
+
+            if not results:
+                logger.warning("No results to rate")
+                return (
+                    "No results to rate.",
+                    gr.update(visible=False),
+                    "[]",
+                    gr.update(visible=False),
+                    ""  # Clear the grid
+                )
+
+            # 0 selected is valid - means none are similar
+            selected_set = set(selected_indices)
+
+            # Save ratings for all images
+            similar_count = 0
+            not_similar_count = 0
+
+            logger.info("Saving ratings to database...")
+            for i, result in enumerate(results):
+                if i in selected_set:
+                    rating = "similar"
+                    similar_count += 1
+                else:
+                    rating = "not_similar"
+                    not_similar_count += 1
+
+                logger.info(f"  [{i}] {result['image_path']}: {rating} (provenance: {result['provenance']})")
+
+                db.save_evaluation_rating(
+                    user_id=user_id,
+                    upload_id=upload_id,
+                    result_image_id=result['image_path'],
+                    rating=rating,
+                    provenance=result['provenance'],
+                    display_position=result['display_position']
+                )
+
+            logger.info(f"SAVED: {similar_count} similar, {not_similar_count} not similar")
+            logger.info("=" * 50)
 
             # Check if we should add to corpus
             upload = db.get_upload(upload_id)
@@ -353,13 +591,15 @@ def create_app():
                     except Exception as e:
                         logger.error(f"Failed to add to corpus: {e}")
 
-            # Count progress
-            total = len(results)
-            rated_count = len(new_rated)
+            status = f"**Thank you!** Saved {similar_count} similar and {not_similar_count} not similar ratings. Upload another dress to continue."
 
-            status = f"Rated as **{rating.replace('_', ' ')}**! ({rated_count}/{total} rated)"
-
-            return new_rated, status, gr.update(visible=False)
+            return (
+                status,
+                gr.update(visible=False),  # Hide instructions
+                "[]",  # Reset selected indices
+                gr.update(visible=False),  # Hide submit button
+                ""  # Clear the grid HTML
+            )
 
         # Wire up events
         search_btn.click(
@@ -367,33 +607,28 @@ def create_app():
             inputs=[upload_image, user_id_state, upload_id_state],
             outputs=[
                 user_id_state, upload_id_state, current_results_state,
-                gallery, rated_images_state, status_text, progress_text,
-                rating_row
+                selected_indices_state, gallery_images_state,
+                status_text, progress_text,
+                selection_instructions, results_grid_html,
+                selected_indices_input, submit_btn, submit_status
             ]
         )
 
-        gallery.select(
-            fn=on_gallery_select,
-            inputs=[current_results_state, rated_images_state],
-            outputs=[selected_index_state, selected_image, rating_row, rating_status]
+        # Handle selection changes from JavaScript
+        selected_indices_input.change(
+            fn=on_selection_change,
+            inputs=[selected_indices_input, gallery_images_state],
+            outputs=[selected_indices_state, submit_btn]
         )
 
-        similar_btn.click(
-            fn=lambda *args: on_rate("similar", *args),
+        # Handle submit button
+        submit_btn.click(
+            fn=on_submit,
             inputs=[
                 user_id_state, upload_id_state, current_results_state,
-                selected_index_state, rated_images_state
+                selected_indices_input, gallery_images_state
             ],
-            outputs=[rated_images_state, rating_status, rating_row]
-        )
-
-        not_similar_btn.click(
-            fn=lambda *args: on_rate("not_similar", *args),
-            inputs=[
-                user_id_state, upload_id_state, current_results_state,
-                selected_index_state, rated_images_state
-            ],
-            outputs=[rated_images_state, rating_status, rating_row]
+            outputs=[submit_status, selection_instructions, selected_indices_input, submit_btn, results_grid_html]
         )
 
     return app
@@ -409,7 +644,9 @@ def main():
         server_name="0.0.0.0",
         server_port=7860,
         share=False,  # Set True for public URL
-        show_error=True
+        show_error=True,
+        allowed_paths=[str(IMAGES_DIR), str(UPLOADS_DIR)],
+        js=TOGGLE_JS
     )
 
 

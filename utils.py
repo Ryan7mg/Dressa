@@ -17,9 +17,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Default paths
-EMBEDDINGS_DIR = Path(__file__).parent / "embeddings"
-IMAGES_DIR = Path(__file__).parent / "dress_images"
+# Default paths - use resolve() for consistent absolute paths
+EMBEDDINGS_DIR = Path(__file__).parent.resolve() / "embeddings"
+IMAGES_DIR = Path(__file__).parent.resolve() / "dress_images"
 
 # Model name to filename mapping
 EMBEDDING_FILES = {
@@ -293,20 +293,20 @@ def get_image_full_path(
     # Handle various path formats
     path = Path(relative_path)
     if path.is_absolute() and path.exists():
-        return path
+        return path.resolve()
 
     # Try as relative to images_dir
     full_path = images_dir / path.name
     if full_path.exists():
-        return full_path
+        return full_path.resolve()
 
     # Try the original path
     full_path = images_dir / relative_path
     if full_path.exists():
-        return full_path
+        return full_path.resolve()
 
-    # Return best guess
-    return images_dir / path.name
+    # Return best guess (resolved for consistency)
+    return (images_dir / path.name).resolve()
 
 
 def append_to_embeddings(
