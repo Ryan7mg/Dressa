@@ -53,6 +53,10 @@ db = None
 TOP_K = 5  # Results per model
 CORPUS_THRESHOLD = 5  # Ratings needed before adding to corpus
 MIN_UPLOADS_FOR_DEBRIEF = 3  # Minimum uploads before showing debrief
+# Optional: preload models at startup to avoid first-search delay
+PRELOAD_MODELS = os.getenv("DRESSA_PRELOAD_MODELS", "0") == "1"
+# Optional: allow user uploads to be added to the corpus
+ENABLE_CORPUS_GROWTH = os.getenv("DRESSA_ENABLE_CORPUS_GROWTH", "0") == "1"
 
 
 def init_app():
@@ -66,6 +70,10 @@ def init_app():
 
     # Initialize model manager (models loaded lazily on first use)
     model_manager = ModelManager()
+
+    if PRELOAD_MODELS:
+        logger.info("Preloading all models (first run may take several minutes)...")
+        model_manager.load_all_models()
 
     # Pre-load embeddings into memory
     logger.info("Pre-loading embeddings...")
@@ -772,15 +780,18 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             logger.info(f"SAVED: {similar_count} similar, {not_similar_count} not similar")
             logger.info("=" * 50)
 
-            # Check if we should add to corpus
-            upload = db.get_upload(upload_id)
-            if upload and upload['num_ratings'] >= CORPUS_THRESHOLD:
-                if not upload['added_to_corpus']:
-                    try:
-                        add_to_corpus(upload_id, upload['filepath'])
-                        logger.info(f"Added upload {upload_id} to corpus!")
-                    except Exception as e:
-                        logger.error(f"Failed to add to corpus: {e}")
+            # Check if we should add to corpus (disabled by default)
+            if ENABLE_CORPUS_GROWTH:
+                upload = db.get_upload(upload_id)
+                if upload and upload['num_ratings'] >= CORPUS_THRESHOLD:
+                    if not upload['added_to_corpus']:
+                        try:
+                            add_to_corpus(upload_id, upload['filepath'])
+                            logger.info(f"Added upload {upload_id} to corpus!")
+                        except Exception as e:
+                            logger.error(f"Failed to add to corpus: {e}")
+            else:
+                logger.info("Corpus growth disabled; skipping add_to_corpus")
 
             status = f"**Thank you!** Saved {similar_count} similar and {not_similar_count} not similar ratings. Upload another dress to continue."
 
@@ -879,9 +890,11 @@ def main():
     app = create_app()
 
     logger.info("Starting Gradio server...")
+    app.queue()
+    server_port = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
     app.launch(
         server_name="0.0.0.0",
-        server_port=7860,
+        server_port=server_port,
         share=False,
         show_error=True,
         allowed_paths=[str(IMAGES_DIR), str(UPLOADS_DIR)],
