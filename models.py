@@ -11,6 +11,8 @@ All embeddings are L2-normalized for cosine similarity.
 """
 
 import torch
+import time
+import os
 import numpy as np
 from PIL import Image
 from pathlib import Path
@@ -57,6 +59,12 @@ class ModelManager:
         Args:
             device: 'cuda', 'mps', or 'cpu'. Auto-detects if None.
         """
+        # Allow env override for debugging/perf testing
+        if device is None:
+            env_device = os.getenv("DRESSA_DEVICE")
+            if env_device:
+                device = env_device
+
         # Auto-detect device
         if device is None:
             if torch.cuda.is_available():
@@ -78,11 +86,16 @@ class ModelManager:
     def load_all_models(self):
         """Load all 4 CLIP models. Call this at app startup."""
         logger.info("Loading all models...")
+        total_start = time.perf_counter()
 
         for model_name in self.MODEL_CONFIGS.keys():
+            start = time.perf_counter()
             self.load_model(model_name)
+            elapsed = time.perf_counter() - start
+            logger.info(f"{model_name} load time: {elapsed:.2f}s")
 
-        logger.info("All models loaded successfully!")
+        total_elapsed = time.perf_counter() - total_start
+        logger.info(f"All models loaded successfully in {total_elapsed:.2f}s")
 
     def load_model(self, model_name: str):
         """
@@ -114,12 +127,19 @@ class ModelManager:
     def _load_openclip_model(self, model_name: str, config: dict):
         """Load an OpenCLIP-based model (standard pretrained)."""
         import open_clip
-
+        t0 = time.perf_counter()
+        logger.info(f"{model_name}: create_model_and_transforms start")
         model, _, preprocess = open_clip.create_model_and_transforms(
             config['model_name'],
             pretrained=config['pretrained']
         )
+        logger.info(f"{model_name}: create_model_and_transforms done in {time.perf_counter() - t0:.2f}s")
+
+        t1 = time.perf_counter()
+        logger.info(f"{model_name}: moving to device {self.device}")
         model = model.to(self.device)
+        logger.info(f"{model_name}: moved to device in {time.perf_counter() - t1:.2f}s")
+
         model.eval()
 
         self.models[model_name] = model
@@ -128,12 +148,19 @@ class ModelManager:
     def _load_openclip_hf_model(self, model_name: str, config: dict):
         """Load an OpenCLIP model from HuggingFace hub (Marqo models)."""
         import open_clip
-
+        t0 = time.perf_counter()
+        logger.info(f"{model_name}: create_model_from_pretrained start")
         # Use create_model_from_pretrained for HF hub models
         model, preprocess = open_clip.create_model_from_pretrained(
             config['hf_hub']
         )
+        logger.info(f"{model_name}: create_model_from_pretrained done in {time.perf_counter() - t0:.2f}s")
+
+        t1 = time.perf_counter()
+        logger.info(f"{model_name}: moving to device {self.device}")
         model = model.to(self.device)
+        logger.info(f"{model_name}: moved to device in {time.perf_counter() - t1:.2f}s")
+
         model.eval()
 
         self.models[model_name] = model
@@ -142,11 +169,21 @@ class ModelManager:
     def _load_transformers_model(self, model_name: str, config: dict):
         """Load a HuggingFace transformers model (FashionCLIP)."""
         from transformers import CLIPModel, CLIPProcessor
-
+        t0 = time.perf_counter()
+        logger.info(f"{model_name}: CLIPModel.from_pretrained start")
         model = CLIPModel.from_pretrained(config['model_name'])
-        processor = CLIPProcessor.from_pretrained(config['model_name'])
+        logger.info(f"{model_name}: CLIPModel.from_pretrained done in {time.perf_counter() - t0:.2f}s")
 
+        t1 = time.perf_counter()
+        logger.info(f"{model_name}: CLIPProcessor.from_pretrained start")
+        processor = CLIPProcessor.from_pretrained(config['model_name'])
+        logger.info(f"{model_name}: CLIPProcessor.from_pretrained done in {time.perf_counter() - t1:.2f}s")
+
+        t2 = time.perf_counter()
+        logger.info(f"{model_name}: moving to device {self.device}")
         model = model.to(self.device)
+        logger.info(f"{model_name}: moved to device in {time.perf_counter() - t2:.2f}s")
+
         model.eval()
 
         self.models[model_name] = model
@@ -218,7 +255,15 @@ class ModelManager:
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         # Encode
-        image_features = model.get_image_features(**inputs)
+        output = model.get_image_features(**inputs)
+
+        # In transformers >= 5.x, get_image_features returns BaseModelOutputWithPooling
+        if hasattr(output, 'image_embeds'):
+            image_features = output.image_embeds
+        elif hasattr(output, 'pooler_output'):
+            image_features = output.pooler_output
+        else:
+            image_features = output
 
         # Convert to numpy
         return image_features.cpu().numpy().flatten()
