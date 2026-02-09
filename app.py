@@ -20,6 +20,7 @@ import shutil
 import logging
 import os
 import io
+import time
 
 from models import ModelManager
 from utils import (
@@ -101,7 +102,8 @@ def compute_image_hash(image: np.ndarray) -> str:
 def search_similar_dresses(
     image: np.ndarray,
     user_id: str,
-    upload_id: str
+    upload_id: str,
+    progress=None
 ) -> list:
     """
     Search for similar dresses using all 4 models.
@@ -110,10 +112,18 @@ def search_similar_dresses(
     """
     global model_manager
 
+    def _progress(value: float, desc: str):
+        if progress is not None:
+            progress(value, desc=desc)
+
     # Ensure models are loaded
     if not model_manager.is_loaded('openai_clip'):
         logger.info("Loading models for first search...")
+        _progress(0.1, "Loading models (first time can take a few minutes)")
+        load_start = time.perf_counter()
         model_manager.load_all_models()
+        load_elapsed = time.perf_counter() - load_start
+        logger.info(f"Model load total time: {load_elapsed:.2f}s")
 
     # Compute image hash for deterministic shuffle
     image_hash = compute_image_hash(image)
@@ -124,41 +134,81 @@ def search_similar_dresses(
 
     # Get embeddings from all models
     logger.info("Extracting embeddings...")
+    _progress(0.5, "Encoding image with 4 models")
+    encode_start = time.perf_counter()
     query_embeddings = model_manager.encode_image_all_models(pil_image)
+    encode_elapsed = time.perf_counter() - encode_start
+    logger.info(f"Encode time (all models): {encode_elapsed:.2f}s")
 
     # Search each model
     logger.info("Searching corpus...")
+    _progress(0.7, "Searching embeddings")
+    search_start = time.perf_counter()
     results_dict = search_all_models(query_embeddings, top_k=TOP_K)
+    search_elapsed = time.perf_counter() - search_start
+    logger.info(f"Search time (all models): {search_elapsed:.2f}s")
 
     # Union and randomize with provenance (deterministic based on image content)
+    _progress(0.85, "Preparing results")
+    union_start = time.perf_counter()
     combined_results = union_and_randomize_with_provenance(results_dict, image_hash)
+    union_elapsed = time.perf_counter() - union_start
+    logger.info(f"Union/shuffle time: {union_elapsed:.2f}s")
 
     logger.info(f"Found {len(combined_results)} unique results")
 
     return combined_results
 
 
-def get_gallery_images(results: list) -> list:
-    """Convert results to gallery format."""
+def _is_under_dir(path: Path, base_dir: Path) -> bool:
+    """Return True if path is within base_dir (after resolving)."""
+    try:
+        path.resolve().relative_to(base_dir.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def filter_results_for_gallery(results: list) -> tuple[list, list]:
+    """
+    Filter search results to only images that live in dress_images.
+
+    Returns:
+        filtered_results: results aligned with gallery order
+        gallery_images: list of resolved image paths
+    """
+    filtered_results = []
     gallery_images = []
 
     for result in results:
         image_path = result['image_path']
 
-        # Try to find the actual file
+        # Skip user uploads - they should not appear in search results
+        if '/uploads/' in str(image_path).replace('\\', '/'):
+            logger.info(f"Skipping upload result: {image_path}")
+            continue
+
+        # Resolve to an actual file
         full_path = get_image_full_path(image_path)
 
-        if full_path.exists():
-            gallery_images.append(str(full_path))
-        else:
+        if not full_path.exists():
             # Try alternative path constructions
             alt_path = IMAGES_DIR / Path(image_path).name
             if alt_path.exists():
-                gallery_images.append(str(alt_path))
+                full_path = alt_path
             else:
                 logger.warning(f"Image not found: {image_path}")
+                continue
 
-    return gallery_images
+        # Ensure images are only served from the corpus folder
+        if not _is_under_dir(full_path, IMAGES_DIR):
+            logger.warning(f"Skipping non-corpus image: {full_path}")
+            continue
+
+        filtered_results.append(result)
+        gallery_images.append(str(full_path))
+
+    return filtered_results, gallery_images
 
 
 def add_to_corpus(upload_id: str, filepath: str):
@@ -449,8 +499,9 @@ def create_app():
 
             return html
 
-        def on_search(image, user_id, upload_id):
+        def on_search(image, user_id, upload_id, progress=gr.Progress()):
             """Handle search button click."""
+            progress(0.0, desc="Validating input")
             if image is None:
                 return (
                     user_id, upload_id, [], [], [],
@@ -474,14 +525,14 @@ def create_app():
             logger.info(f"New upload: {upload_id}")
 
             # Search for similar dresses
-            results = search_similar_dresses(image, user_id, upload_id)
+            results = search_similar_dresses(image, user_id, upload_id, progress=progress)
 
-            # Get gallery images
-            gallery_images = get_gallery_images(results)
+            # Filter results to corpus-only images and build gallery
+            filtered_results, gallery_images = filter_results_for_gallery(results)
 
             if not gallery_images:
                 return (
-                    user_id, upload_id, results, [], [],
+                    user_id, upload_id, filtered_results, [], [],
                     "Search complete, but no images found. Check embeddings files.",
                     "No results found.",
                     gr.update(visible=False),
@@ -491,15 +542,15 @@ def create_app():
                     ""
                 )
 
-            progress = f"Found **{len(gallery_images)}** similar dresses."
+            progress_msg = f"Found **{len(gallery_images)}** similar dresses."
 
             # Generate HTML grid
             grid_html = generate_results_grid_html(gallery_images, [])
 
             return (
-                user_id, upload_id, results, [], gallery_images,
+                user_id, upload_id, filtered_results, [], gallery_images,
                 "Search complete!",
-                progress,
+                progress_msg,
                 gr.update(visible=True),  # selection_instructions
                 grid_html,  # results_grid_html
                 "[]",  # selected_indices_input
