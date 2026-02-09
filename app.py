@@ -2,17 +2,19 @@
 app.py - Gradio Web Interface for Dressa User Study
 
 Main application that:
-1. Allows users to upload dress photos
-2. Searches 4 CLIP models for similar dresses
-3. Displays results in a randomized gallery
-4. Collects binary ratings (Similar / Not Similar)
-5. Adds highly-rated uploads to corpus (dynamic growth)
+1. Shows consent screen first
+2. Allows users to upload dress photos
+3. Searches 4 CLIP models for similar dresses
+4. Displays results in a randomized gallery
+5. Collects binary ratings (Similar / Not Similar)
+6. Shows debrief screen after completion
 """
 
 import gradio as gr
 import numpy as np
 import hashlib
 import base64
+import uuid
 from PIL import Image
 from pathlib import Path
 from datetime import datetime
@@ -50,6 +52,7 @@ db = None
 # Constants
 TOP_K = 5  # Results per model
 CORPUS_THRESHOLD = 5  # Ratings needed before adding to corpus
+MIN_UPLOADS_FOR_DEBRIEF = 3  # Minimum uploads before showing debrief
 
 
 def init_app():
@@ -299,77 +302,217 @@ window.toggleSelection = toggleSelection;
 def create_app():
     """Create the Gradio app interface."""
 
-    # Session state stored in gr.State
     with gr.Blocks(title="Dressa - Dress Similarity Study") as app:
 
         # State variables
+        session_id_state = gr.State(value=None)
         user_id_state = gr.State(value=None)
         upload_id_state = gr.State(value=None)
         current_results_state = gr.State(value=[])
-        selected_indices_state = gr.State(value=[])  # List of selected image indices
-        gallery_images_state = gr.State(value=[])  # Store gallery image paths
+        selected_indices_state = gr.State(value=[])
+        gallery_images_state = gr.State(value=[])
+        upload_count_state = gr.State(value=0)
 
-        # Header
-        gr.Markdown("""
-        # Dressa - Find Similar Dresses
+        # ==================== CONSENT SCREEN ====================
+        with gr.Column(visible=True) as consent_screen:
 
-        **How it works:**
-        1. Upload a photo of a dress from your wardrobe
-        2. Browse similar dresses found by our AI
-        3. Tap dresses that look similar to yours
+            gr.Markdown("""
+# Fashion Similarity Study
 
-        Your ratings help us improve fashion search for everyone!
-        """)
+**Student:** Ryan Magaya (2786968m@student.gla.ac.uk) | **Supervisor:** Prof. Craig Macdonald
+University of Glasgow - School of Computing Science
 
-        # Main layout
-        with gr.Row():
-            # Left column: Upload
-            with gr.Column(scale=1):
-                gr.Markdown("### Upload Your Dress")
-                upload_image = gr.Image(
-                    label="Upload a dress photo",
-                    type="numpy",
-                    sources=["upload", "webcam"]
-                )
-                search_btn = gr.Button("Find Similar Dresses", variant="primary")
-                status_text = gr.Markdown("")
+---
 
-            # Right column: Results
-            with gr.Column(scale=2):
-                gr.Markdown("### Similar Dresses")
-                progress_text = gr.Markdown("Upload an image to start searching...")
+## Purpose of This Study
 
-                # Instructions for selection
-                selection_instructions = gr.Markdown(
-                    "**Tap the dresses that are similar to yours. Tap again to deselect. "
-                    "When you are done, press Submit.**",
-                    visible=False
-                )
+**Research Question:** Which AI vision-language models perform best at finding similar fashion items when users upload real wardrobe photos (not professional product images)?
 
-                # Custom HTML grid for toggle selection
-                results_grid_html = gr.HTML(value="", elem_id="results-grid-container")
+**Why this matters:** Existing fashion recommendation systems are trained on professional product photos. We're testing if they work equally well on the kinds of photos real users take (dress on hanger, on floor, worn by you). Your ratings will help determine which AI model is best for real-world fashion search applications.
 
-                # Hidden textbox to communicate selected indices from JS to Python
-                selected_indices_input = gr.Textbox(
-                    value="[]",
-                    visible=False,
-                    elem_id="selected-indices-input"
-                )
+**Academic Goal:** This research contributes to my dissertation on building AI-powered circular fashion marketplaces.
 
-                # Submit button - always interactive (0 selected is valid = none similar)
-                submit_btn = gr.Button(
-                    "Submit (0 selected)",
-                    variant="primary",
-                    size="lg",
-                    visible=False,
-                    interactive=True,
-                    elem_id="submit-btn"
-                )
+---
+            """)
 
-                # Status message
-                submit_status = gr.Markdown("")
+            # What You'll Need - highlighted box
+            gr.HTML("""
+                <div style="background-color: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                    <strong style="font-size: 16px;">What You'll Need</strong><br><br>
+                    Before starting, please have ready:<br>
+                    - <strong>3-5 photos of dresses</strong> from your wardrobe<br>
+                    - Photos should show: dress on hanger, laid flat on floor, or worn by you<br>
+                    - <strong>IMPORTANT:</strong> Crop out your face before uploading<br>
+                    - Phone photos are fine - doesn't need to be professional quality<br><br>
+                    <strong>Don't have photos ready?</strong> Please take them before clicking "Start" below.
+                </div>
+            """)
+
+            # Warning banner
+            gr.HTML("""
+                <div style="background-color: #dc2626; color: white; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 16px;">
+                    DO NOT UPLOAD PHOTOS WITH YOUR FACE - Crop out faces before uploading
+                </div>
+            """)
+
+            # Two-column layout for remaining info
+            with gr.Row():
+                with gr.Column(scale=1):
+                    gr.Markdown("""
+**What You'll Do (5 min)**
+1. Upload a dress photo
+2. View AI-recommended similar dresses
+3. Click which ones are "Similar" or "Not Similar"
+4. Repeat for 3-5 of your dress photos
+
+**Data Collected**
+- Your dress photos and ratings
+- Anonymous session ID only
+- No names, emails, or personal info
+- Used for comparing 4 AI models
+                    """)
+
+                with gr.Column(scale=1):
+                    gr.Markdown("""
+**Your Rights**
+- Voluntary and anonymous
+- Close browser anytime to withdraw
+- Request deletion: email session ID
+
+**By clicking "I Agree and Start":**
+- You are 16+ years old
+- You have dress photos ready
+- You will NOT upload photos with faces
+- You consent to anonymous data collection
+
+**Questions?** 2786968m@student.gla.ac.uk
+                    """)
+
+            with gr.Row():
+                agree_btn = gr.Button("I Agree and Start", variant="primary", size="lg")
+                disagree_btn = gr.Button("I Do Not Agree", variant="secondary", size="lg")
+
+            disagree_message = gr.Markdown("", visible=False)
+
+        # ==================== MAIN APP SCREEN ====================
+        with gr.Column(visible=False) as main_app_screen:
+
+            gr.Markdown("""
+# Dressa - Find Similar Dresses
+
+**How it works:**
+1. Upload a photo of a dress from your wardrobe
+2. Browse similar dresses found by our AI
+3. Tap dresses that look similar to yours
+
+Your ratings help us improve fashion search!
+            """)
+
+            # Progress tracker
+            upload_progress = gr.Markdown("**Uploads: 0 / 3-5**")
+
+            # Main layout
+            with gr.Row():
+                # Left column: Upload
+                with gr.Column(scale=1):
+                    gr.Markdown("### Upload Your Dress")
+                    upload_image = gr.Image(
+                        label="Upload a dress photo",
+                        type="numpy",
+                        sources=["upload", "webcam"]
+                    )
+                    search_btn = gr.Button("Find Similar Dresses", variant="primary")
+                    status_text = gr.Markdown("")
+
+                    # Finish button (appears after minimum uploads)
+                    finish_btn = gr.Button("Finish Study", variant="secondary", visible=False)
+
+                # Right column: Results
+                with gr.Column(scale=2):
+                    gr.Markdown("### Similar Dresses")
+                    progress_text = gr.Markdown("Upload an image to start searching...")
+
+                    # Instructions for selection
+                    selection_instructions = gr.Markdown(
+                        "**Tap the dresses that are similar to yours. Tap again to deselect. "
+                        "When you are done, press Submit.**",
+                        visible=False
+                    )
+
+                    # Custom HTML grid for toggle selection
+                    results_grid_html = gr.HTML(value="", elem_id="results-grid-container")
+
+                    # Hidden textbox for selected indices
+                    with gr.Row(visible=False) as hidden_row:
+                        selected_indices_input = gr.Textbox(
+                            value="[]",
+                            elem_id="selected-indices-input"
+                        )
+
+                    # Submit button
+                    submit_btn = gr.Button(
+                        "Submit (0 selected)",
+                        variant="primary",
+                        size="lg",
+                        visible=False,
+                        interactive=True,
+                        elem_id="submit-btn"
+                    )
+
+                    # Status message
+                    submit_status = gr.Markdown("")
+
+        # ==================== DEBRIEF SCREEN ====================
+        with gr.Column(visible=False) as debrief_screen:
+
+            gr.Markdown("""
+# Thank You for Participating
+
+You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-FashionSigLIP
+            """)
+
+            gr.Markdown("**Your Session ID (select and copy):**")
+            session_id_display = gr.Textbox(
+                label="",
+                interactive=True,
+                elem_id="session-id-display"
+            )
+
+            gr.Markdown("""
+**Your data:**
+- Stored anonymously for dissertation research
+- Used to compare AI model performance
+
+**Questions?** 2786968m@student.gla.ac.uk
+**Delete data?** Email with session ID above
+
+**Supervisor:** craig.macdonald@glasgow.ac.uk
+            """)
+
+            close_btn = gr.Button("Close", variant="primary", size="lg")
+            close_message = gr.Markdown("")
 
         # ==================== Event Handlers ====================
+
+        def on_agree():
+            """Handle consent agreement - generate session ID and show main app."""
+            session_id = str(uuid.uuid4())
+            user_id = db.create_user()
+            logger.info(f"New session: {session_id}, user: {user_id}")
+            return (
+                session_id,
+                user_id,
+                gr.update(visible=False),  # Hide consent screen
+                gr.update(visible=True),   # Show main app
+                gr.update(visible=False),  # Keep debrief hidden
+            )
+
+        def on_disagree():
+            """Handle consent disagreement."""
+            return gr.update(
+                value="Thank you. You may close this window.",
+                visible=True
+            )
 
         def generate_results_grid_html(gallery_images: list, selected_indices: list) -> str:
             """Generate HTML for the results grid with toggle selection."""
@@ -456,7 +599,6 @@ def create_app():
                 font-weight: 500;
             }
 
-            /* Touch-friendly minimum size */
             @media (max-width: 767px) {
                 .result-item {
                     min-height: 140px;
@@ -465,16 +607,12 @@ def create_app():
             </style>
             """
 
-            # JavaScript - no separate script tag needed, use inline handlers
-
             # Generate image grid with base64 encoded images
             grid_items = []
             for i, img_path in enumerate(gallery_images):
                 selected_class = "selected" if i in selected_indices else ""
-                # Convert image to base64 data URI
                 try:
                     with Image.open(img_path) as img:
-                        # Resize for web display (max 400px width)
                         img.thumbnail((400, 600), Image.Resampling.LANCZOS)
                         buffer = io.BytesIO()
                         img.save(buffer, format='JPEG', quality=85)
@@ -499,63 +637,66 @@ def create_app():
 
             return html
 
-        def on_search(image, user_id, upload_id, progress=gr.Progress()):
+        def on_search(image, user_id, upload_id, upload_count, progress=gr.Progress()):
             """Handle search button click."""
             progress(0.0, desc="Validating input")
             if image is None:
                 return (
-                    user_id, upload_id, [], [], [],
+                    user_id, upload_id, [], [], [], upload_count,
                     "Please upload an image first.",
                     "Upload an image to start searching...",
-                    gr.update(visible=False),  # selection_instructions
-                    "",  # results_grid_html
-                    "[]",  # selected_indices_input
-                    gr.update(visible=False, interactive=False),  # submit_btn
-                    ""  # submit_status
+                    gr.update(visible=False),
+                    "",
+                    "[]",
+                    gr.update(visible=False, interactive=False),
+                    "",
+                    f"**Uploads: {upload_count} / 3-5**",
+                    gr.update(visible=upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
 
-            # Create user if needed
-            if user_id is None:
-                user_id = db.create_user()
-                logger.info(f"New user: {user_id}")
-
             # Save uploaded image
+            progress(0.05, desc="Saving upload")
             filepath = save_uploaded_image(image, user_id)
             upload_id = db.create_upload(user_id, filepath)
-            logger.info(f"New upload: {upload_id}")
+            new_upload_count = upload_count + 1
+            logger.info(f"New upload: {upload_id} (count: {new_upload_count})")
 
             # Search for similar dresses
             results = search_similar_dresses(image, user_id, upload_id, progress=progress)
 
             # Filter results to corpus-only images and build gallery
+            progress(0.92, desc="Filtering images")
             filtered_results, gallery_images = filter_results_for_gallery(results)
 
             if not gallery_images:
                 return (
-                    user_id, upload_id, filtered_results, [], [],
-                    "Search complete, but no images found. Check embeddings files.",
+                    user_id, upload_id, filtered_results, [], [], new_upload_count,
+                    "Search complete, but no corpus images found. Check embeddings files.",
                     "No results found.",
                     gr.update(visible=False),
                     "",
                     "[]",
                     gr.update(visible=False, interactive=False),
-                    ""
+                    "",
+                    f"**Uploads: {new_upload_count} / 3-5**",
+                    gr.update(visible=new_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
 
+            progress(1.0, desc="Done")
             progress_msg = f"Found **{len(gallery_images)}** similar dresses."
-
-            # Generate HTML grid
             grid_html = generate_results_grid_html(gallery_images, [])
 
             return (
-                user_id, upload_id, filtered_results, [], gallery_images,
+                user_id, upload_id, filtered_results, [], gallery_images, new_upload_count,
                 "Search complete!",
                 progress_msg,
-                gr.update(visible=True),  # selection_instructions
-                grid_html,  # results_grid_html
-                "[]",  # selected_indices_input
-                gr.update(visible=True, interactive=True, value="Submit (0 selected)"),  # submit_btn
-                ""  # submit_status
+                gr.update(visible=True),
+                grid_html,
+                "[]",
+                gr.update(visible=True, interactive=True, value="Submit (0 selected)"),
+                "",
+                f"**Uploads: {new_upload_count} / 3-5**",
+                gr.update(visible=new_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
             )
 
         def on_selection_change(selected_indices_json, gallery_images):
@@ -571,7 +712,7 @@ def create_app():
 
             return (
                 selected_indices,
-                gr.update(value=btn_text, interactive=True)  # Always interactive - 0 selected is valid
+                gr.update(value=btn_text, interactive=True)
             )
 
         def on_submit(user_id, upload_id, results, selected_indices_json, gallery_images):
@@ -599,10 +740,9 @@ def create_app():
                     gr.update(visible=False),
                     "[]",
                     gr.update(visible=False),
-                    ""  # Clear the grid
+                    ""
                 )
 
-            # 0 selected is valid - means none are similar
             selected_set = set(selected_indices)
 
             # Save ratings for all images
@@ -646,33 +786,67 @@ def create_app():
 
             return (
                 status,
-                gr.update(visible=False),  # Hide instructions
-                "[]",  # Reset selected indices
-                gr.update(visible=False),  # Hide submit button
-                ""  # Clear the grid HTML
+                gr.update(visible=False),
+                "[]",
+                gr.update(visible=False),
+                ""
             )
 
-        # Wire up events
-        search_btn.click(
-            fn=on_search,
-            inputs=[upload_image, user_id_state, upload_id_state],
+        def on_finish(session_id):
+            """Handle finish study button - show debrief screen."""
+            return (
+                gr.update(visible=False),  # Hide main app
+                gr.update(visible=True),   # Show debrief
+                session_id  # Display session ID
+            )
+
+        def on_close():
+            """Handle close button on debrief screen."""
+            return gr.update(value="Thank you for participating. You may close this window.")
+
+        # ==================== Wire up events ====================
+
+        # Consent screen events
+        agree_btn.click(
+            fn=on_agree,
+            inputs=[],
             outputs=[
-                user_id_state, upload_id_state, current_results_state,
-                selected_indices_state, gallery_images_state,
-                status_text, progress_text,
-                selection_instructions, results_grid_html,
-                selected_indices_input, submit_btn, submit_status
+                session_id_state,
+                user_id_state,
+                consent_screen,
+                main_app_screen,
+                debrief_screen
             ]
         )
 
-        # Handle selection changes from JavaScript
+        disagree_btn.click(
+            fn=on_disagree,
+            inputs=[],
+            outputs=[disagree_message]
+        )
+
+        # Search events
+        search_btn.click(
+            fn=on_search,
+            inputs=[upload_image, user_id_state, upload_id_state, upload_count_state],
+            outputs=[
+                user_id_state, upload_id_state, current_results_state,
+                selected_indices_state, gallery_images_state, upload_count_state,
+                status_text, progress_text,
+                selection_instructions, results_grid_html,
+                selected_indices_input, submit_btn, submit_status,
+                upload_progress, finish_btn
+            ]
+        )
+
+        # Selection change events
         selected_indices_input.change(
             fn=on_selection_change,
             inputs=[selected_indices_input, gallery_images_state],
             outputs=[selected_indices_state, submit_btn]
         )
 
-        # Handle submit button
+        # Submit events
         submit_btn.click(
             fn=on_submit,
             inputs=[
@@ -680,6 +854,20 @@ def create_app():
                 selected_indices_input, gallery_images_state
             ],
             outputs=[submit_status, selection_instructions, selected_indices_input, submit_btn, results_grid_html]
+        )
+
+        # Finish study events
+        finish_btn.click(
+            fn=on_finish,
+            inputs=[session_id_state],
+            outputs=[main_app_screen, debrief_screen, session_id_display]
+        )
+
+        # Close events
+        close_btn.click(
+            fn=on_close,
+            inputs=[],
+            outputs=[close_message]
         )
 
     return app
@@ -694,7 +882,7 @@ def main():
     app.launch(
         server_name="0.0.0.0",
         server_port=7860,
-        share=False,  # Set True for public URL
+        share=False,
         show_error=True,
         allowed_paths=[str(IMAGES_DIR), str(UPLOADS_DIR)],
         js=TOGGLE_JS
