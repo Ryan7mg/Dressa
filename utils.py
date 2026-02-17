@@ -2,7 +2,7 @@
 utils.py - Utility functions for Dressa App
 
 Handles:
-- Loading precomputed embeddings from .pkl files
+- Loading precomputed embeddings from .pkl or text files
 - Cosine similarity search
 - Combining and randomizing results from multiple models
 """
@@ -10,6 +10,7 @@ Handles:
 import pickle
 import numpy as np
 from pathlib import Path
+import os
 from typing import List, Tuple, Dict, Optional
 from sklearn.metrics.pairwise import cosine_similarity
 import random
@@ -18,8 +19,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Default paths - use resolve() for consistent absolute paths
-EMBEDDINGS_DIR = Path(__file__).parent.resolve() / "embeddings"
-IMAGES_DIR = Path(__file__).parent.resolve() / "dress_images"
+APP_DIR = Path(__file__).parent.resolve()
+EMBEDDINGS_DIR = Path(
+    os.getenv("DRESSA_EMBEDDINGS_DIR", str(APP_DIR / "embeddings"))
+).resolve()
+IMAGES_DIR = Path(
+    os.getenv("DRESSA_IMAGES_DIR", str(APP_DIR / "dress_images"))
+).resolve()
 
 # Model name to filename mapping
 EMBEDDING_FILES = {
@@ -33,17 +39,25 @@ EMBEDDING_FILES = {
 _embeddings_cache: Dict[str, dict] = {}
 
 
+def _text_embedding_paths(model_name: str, embeddings_dir: Path) -> Tuple[Path, Path]:
+    """Return (embeddings_csv_path, image_paths_txt_path) for text embedding storage."""
+    return (
+        Path(embeddings_dir) / f"{model_name}_embeddings.csv",
+        Path(embeddings_dir) / f"{model_name}_image_paths.txt",
+    )
+
+
 def load_embeddings(
     model_name: str,
     embeddings_dir: Optional[Path] = None
 ) -> dict:
     """
-    Load precomputed embeddings from .pkl file.
+    Load precomputed embeddings from .pkl or text files.
 
     Args:
         model_name: One of 'openai_clip', 'fashion_clip',
                    'marqo_fashion_clip', 'marqo_fashion_siglip'
-        embeddings_dir: Directory containing .pkl files (default: ./embeddings/)
+        embeddings_dir: Directory containing embedding files (default: ./embeddings/)
 
     Returns:
         Dict with keys:
@@ -63,13 +77,31 @@ def load_embeddings(
                         f"Choose from: {list(EMBEDDING_FILES.keys())}")
 
     filepath = Path(embeddings_dir) / filename
-    if not filepath.exists():
-        raise FileNotFoundError(f"Embedding file not found: {filepath}")
+    if filepath.exists():
+        logger.info(f"Loading embeddings from {filepath}")
+        with open(filepath, 'rb') as f:
+            data = pickle.load(f)
+    else:
+        embeddings_csv, image_paths_txt = _text_embedding_paths(model_name, Path(embeddings_dir))
+        if not embeddings_csv.exists() or not image_paths_txt.exists():
+            raise FileNotFoundError(
+                f"Embedding files not found. Checked: {filepath}, "
+                f"{embeddings_csv}, {image_paths_txt}"
+            )
 
-    logger.info(f"Loading embeddings from {filepath}")
-
-    with open(filepath, 'rb') as f:
-        data = pickle.load(f)
+        logger.info(f"Loading embeddings from text files: {embeddings_csv}, {image_paths_txt}")
+        embeddings = np.loadtxt(embeddings_csv, delimiter=",", dtype=np.float32)
+        if embeddings.ndim == 1:
+            embeddings = embeddings.reshape(1, -1)
+        image_paths = [
+            line.strip()
+            for line in image_paths_txt.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        data = {
+            "embeddings": embeddings,
+            "image_paths": image_paths,
+        }
 
     # Validate structure
     if 'embeddings' not in data or 'image_paths' not in data:
@@ -77,8 +109,14 @@ def load_embeddings(
                         f"Expected keys: 'embeddings', 'image_paths'. "
                         f"Got: {data.keys()}")
 
+    if len(data['image_paths']) != len(data['embeddings']):
+        raise ValueError(
+            f"Embedding row count mismatch for {model_name}: "
+            f"{len(data['embeddings'])} embeddings vs {len(data['image_paths'])} image paths"
+        )
+
     # Ensure embeddings are normalized
-    embeddings = data['embeddings']
+    embeddings = np.asarray(data['embeddings'], dtype=np.float32)
     norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
     data['embeddings'] = embeddings / norms
 
@@ -323,7 +361,7 @@ def append_to_embeddings(
         image_path: Path to the image being added
         embedding: Normalized embedding vector (512,)
         model_name: Which model's embedding file to update
-        embeddings_dir: Directory containing .pkl files
+        embeddings_dir: Directory containing embedding files
     """
     if embeddings_dir is None:
         embeddings_dir = EMBEDDINGS_DIR
@@ -333,10 +371,31 @@ def append_to_embeddings(
         raise ValueError(f"Unknown model: {model_name}")
 
     filepath = Path(embeddings_dir) / filename
+    embeddings_csv, image_paths_txt = _text_embedding_paths(model_name, Path(embeddings_dir))
 
-    # Load current embeddings
-    with open(filepath, 'rb') as f:
-        data = pickle.load(f)
+    if filepath.exists():
+        with open(filepath, 'rb') as f:
+            data = pickle.load(f)
+        storage_format = "pkl"
+    elif embeddings_csv.exists() and image_paths_txt.exists():
+        embeddings = np.loadtxt(embeddings_csv, delimiter=",", dtype=np.float32)
+        if embeddings.ndim == 1:
+            embeddings = embeddings.reshape(1, -1)
+        image_paths = [
+            line.strip()
+            for line in image_paths_txt.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        data = {
+            "embeddings": embeddings,
+            "image_paths": image_paths,
+        }
+        storage_format = "text"
+    else:
+        raise FileNotFoundError(
+            f"No embedding storage found for {model_name}. "
+            f"Checked {filepath}, {embeddings_csv}, {image_paths_txt}"
+        )
 
     # Ensure embedding is normalized
     embedding = embedding / np.linalg.norm(embedding)
@@ -346,8 +405,12 @@ def append_to_embeddings(
     data['image_paths'].append(image_path)
 
     # Save back
-    with open(filepath, 'wb') as f:
-        pickle.dump(data, f)
+    if storage_format == "pkl":
+        with open(filepath, 'wb') as f:
+            pickle.dump(data, f)
+    else:
+        np.savetxt(embeddings_csv, data['embeddings'], delimiter=",", fmt="%.8f")
+        image_paths_txt.write_text("\n".join(data['image_paths']) + "\n", encoding="utf-8")
 
     # Update cache if loaded
     if model_name in _embeddings_cache:

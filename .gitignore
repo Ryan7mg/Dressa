@@ -15,10 +15,9 @@ env/
 .ipynb_checkpoints/
 *.ipynb
 
-# Large data files (stored separately / use Git LFS)
-dress_images/
-embeddings/
+# Space needs local corpus and precomputed embeddings committed
 uploads/
+embeddings/*.pkl
 
 # Database (generated at runtime)
 *.db

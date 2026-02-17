@@ -13,6 +13,7 @@ import uuid
 import json
 from datetime import datetime
 from pathlib import Path
+import os
 from typing import List, Optional, Dict, Any
 from contextlib import contextmanager
 import logging
@@ -20,7 +21,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Default database path
-DEFAULT_DB_PATH = Path(__file__).parent / "user_study.db"
+APP_DIR = Path(__file__).parent.resolve()
+DEFAULT_DB_PATH = Path(
+    os.getenv("DRESSA_DB_PATH", str(APP_DIR / "user_study.db"))
+)
 
 
 class Database:
@@ -33,7 +37,8 @@ class Database:
         Args:
             db_path: Path to SQLite database file
         """
-        self.db_path = db_path or DEFAULT_DB_PATH
+        self.db_path = Path(db_path) if db_path else DEFAULT_DB_PATH
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
     def _init_db(self):

@@ -39,11 +39,15 @@ logger = logging.getLogger(__name__)
 
 # Paths - use resolve() for consistent absolute paths
 APP_DIR = Path(__file__).parent.resolve()
-UPLOADS_DIR = APP_DIR / "uploads"
-IMAGES_DIR = APP_DIR / "dress_images"
+UPLOADS_DIR = Path(
+    os.getenv("DRESSA_UPLOADS_DIR", str(APP_DIR / "uploads"))
+).resolve()
+IMAGES_DIR = Path(
+    os.getenv("DRESSA_IMAGES_DIR", str(APP_DIR / "dress_images"))
+).resolve()
 
 # Ensure uploads directory exists
-UPLOADS_DIR.mkdir(exist_ok=True)
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Global instances (loaded at startup)
 model_manager = None
