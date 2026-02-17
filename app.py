@@ -113,8 +113,7 @@ def compute_image_hash(image: np.ndarray) -> str:
 def search_similar_dresses(
     image: np.ndarray,
     user_id: str,
-    upload_id: str,
-    progress=None
+    upload_id: str
 ) -> list:
     """
     Search for similar dresses using all 4 models.
@@ -123,14 +122,9 @@ def search_similar_dresses(
     """
     global model_manager
 
-    def _progress(value: float, desc: str):
-        if progress is not None:
-            progress(value, desc=desc)
-
     # Ensure models are loaded
     if not model_manager.is_loaded('openai_clip'):
         logger.info("Loading models for first search...")
-        _progress(0.1, "Loading models (first time can take a few minutes)")
         load_start = time.perf_counter()
         model_manager.load_all_models()
         load_elapsed = time.perf_counter() - load_start
@@ -145,7 +139,6 @@ def search_similar_dresses(
 
     # Get embeddings from all models
     logger.info("Extracting embeddings...")
-    _progress(0.5, "Encoding image with 4 models")
     encode_start = time.perf_counter()
     query_embeddings = model_manager.encode_image_all_models(pil_image)
     encode_elapsed = time.perf_counter() - encode_start
@@ -153,14 +146,12 @@ def search_similar_dresses(
 
     # Search each model
     logger.info("Searching corpus...")
-    _progress(0.7, "Searching embeddings")
     search_start = time.perf_counter()
     results_dict = search_all_models(query_embeddings, top_k=TOP_K)
     search_elapsed = time.perf_counter() - search_start
     logger.info(f"Search time (all models): {search_elapsed:.2f}s")
 
     # Union and randomize with provenance (deterministic based on image content)
-    _progress(0.85, "Preparing results")
     union_start = time.perf_counter()
     combined_results = union_and_randomize_with_provenance(results_dict, image_hash)
     union_elapsed = time.perf_counter() - union_start
@@ -246,63 +237,336 @@ def add_to_corpus(upload_id: str, filepath: str):
 
 # ==================== Gradio Interface ====================
 
+# Global styles for a more polished, responsive UI
+FONT_LINKS_HTML = """
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;700&display=swap" rel="stylesheet">
+"""
+
+APP_CSS = """
+:root {
+    --bg: #fefdfb;
+    --card: #ffffff;
+    --ink: #191816;
+    --muted: #6f6b65;
+    --accent: #d46b3b;
+    --accent-2: #236b5b;
+    --border: #e7ddd1;
+    --shadow: 0 16px 44px rgba(24, 16, 8, 0.10);
+    --display: 'Fraunces', 'Space Grotesk', 'Helvetica Neue', sans-serif;
+    --body: 'Space Grotesk', 'Helvetica Neue', Helvetica, sans-serif;
+}
+
+body, .gradio-container {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    overflow-x: hidden;
+}
+
+.gradio-container {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    min-height: 100vh;
+    padding: 28px clamp(16px, 3vw, 40px) 80px;
+    box-sizing: border-box;
+}
+
+.gradio-container .container,
+.gradio-container .wrap,
+.gradio-container .contain,
+.gradio-container .block,
+.gradio-container .gr-row,
+.gradio-container .gr-column,
+.gradio-container .gr-form,
+.gradio-container .gr-panel {
+    max-width: none !important;
+    width: 100% !important;
+    overflow: visible !important;
+}
+
+.gradio-container .wrap::-webkit-scrollbar,
+.gradio-container .block::-webkit-scrollbar,
+.gradio-container .gr-row::-webkit-scrollbar,
+.gradio-container .gr-column::-webkit-scrollbar,
+.gradio-container .gr-panel::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+#main-row {
+    gap: 26px;
+    align-items: flex-start;
+}
+
+#upload-col, #results-col {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 16px;
+    box-shadow: 0 10px 28px rgba(24, 16, 8, 0.06);
+    overflow: visible !important;
+}
+
+#results-grid-container {
+    overflow: visible !important;
+}
+
+#hero {
+    background: linear-gradient(135deg, #fff8f1, #fff2e8);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+    padding: 22px 24px;
+    margin-bottom: 18px;
+}
+
+#hero .hero-title {
+    font-family: var(--display);
+    font-size: clamp(28px, 3vw, 36px);
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+h1, h2, h3 {
+    font-family: var(--display);
+    letter-spacing: -0.01em;
+}
+
+#hero .hero-subtitle {
+    color: var(--muted);
+    font-size: 16px;
+    margin-bottom: 16px;
+}
+
+#hero .hero-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+#hero .step {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 12px 14px;
+    font-size: 14px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+#hero .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+}
+
+#upload-progress {
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+
+#status-text, #progress-text, #submit-status {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    box-shadow: 0 8px 18px rgba(24, 16, 8, 0.05);
+}
+
+#progress-text {
+    margin-bottom: 8px;
+}
+
+#selection-instructions {
+    font-weight: 600;
+    color: var(--ink);
+}
+
+#selection-count {
+    color: var(--muted);
+    margin-bottom: 8px;
+}
+
+#upload-image .image-preview,
+#upload-image .image-container {
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+#upload-image .image-preview .toolbar,
+#upload-image .image-preview .image-preview-controls,
+#upload-image .image-preview .icon,
+#upload-image .image-preview .buttons,
+#upload-image .image-preview .toolbar button[aria-label="Clear"],
+#upload-image .image-preview .toolbar button[aria-label="Remove"],
+#upload-image .image-preview .toolbar button[aria-label="Fullscreen"],
+#upload-image .image-preview .toolbar button[aria-label="Zoom"],
+#upload-image .image-preview .toolbar button[aria-label="View"],
+#upload-image .image-preview button[aria-label="Clear"],
+#upload-image .image-preview button[aria-label="Remove"],
+#upload-image .image-preview button[aria-label="Fullscreen"] {
+    display: none !important;
+}
+
+.gr-markdown, .gr-markdown > div {
+    overflow: visible !important;
+}
+
+#status-text, #progress-text, #submit-status {
+    white-space: normal !important;
+}
+
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    padding: 6px;
+}
+
+.result-item {
+    position: relative;
+    aspect-ratio: 3/4;
+    cursor: pointer;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid transparent;
+    transition: border-color 0.2s ease, transform 0.12s ease, box-shadow 0.2s ease;
+    background: #f4f1ec;
+    padding: 0;
+}
+
+.result-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.result-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(24, 16, 8, 0.12);
+}
+
+.result-item.selected {
+    border-color: var(--accent-2);
+    box-shadow: 0 0 0 3px rgba(31, 111, 91, 0.2);
+}
+
+.result-item.selected::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    background: var(--accent-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E") center/60% no-repeat;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.result-item .index-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+#submit-btn button,
+#submit-btn {
+    width: 100% !important;
+}
+
+.gr-button.primary {
+    background: var(--accent) !important;
+    border: none !important;
+    color: #fff !important;
+}
+
+.gr-button.secondary {
+    background: #fff !important;
+    border: 1px solid var(--border) !important;
+    color: var(--ink) !important;
+}
+
+.footer, footer {
+    display: none !important;
+}
+
+div[data-testid="progress"] {
+    display: none !important;
+}
+
+.progress, .progress-bar, .progress-text, .wrap .progress {
+    display: none !important;
+}
+"""
+
 # JavaScript for toggle selection functionality (passed to launch() for Gradio 6.0+)
 TOGGLE_JS = """
 function toggleSelection(index) {
     const item = document.querySelector(`[data-index="${index}"]`);
     if (!item) return;
     item.classList.toggle('selected');
+    item.setAttribute('aria-pressed', item.classList.contains('selected'));
 
-    // Get all selected indices
     const selected = [...document.querySelectorAll('.result-item.selected')]
-        .map(el => parseInt(el.dataset.index));
+        .map(el => parseInt(el.dataset.index))
+        .sort((a, b) => a - b);
 
-    console.log('Selected indices:', selected);
-
-    // Find the textbox by elem_id - Gradio wraps it in a div with the ID
-    let input = null;
-    const container = document.getElementById('selected-indices-input');
-    if (container) {
-        input = container.querySelector('textarea') || container.querySelector('input');
-        console.log('Found container, input:', input);
-    }
-
-    // Fallback: search all textareas
-    if (!input) {
-        document.querySelectorAll('textarea').forEach(el => {
-            console.log('Textarea value:', el.value);
-            if (el.value !== undefined && el.value.startsWith('[')) {
-                input = el;
-            }
-        });
-    }
-
+    // Update Gradio component using multiple methods for compatibility
+    const input = document.querySelector('#selected-indices-input textarea, #selected-indices-input input');
     if (input) {
-        console.log('Updating input from', input.value, 'to', JSON.stringify(selected));
-        input.value = JSON.stringify(selected);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        // Also try focus/blur to trigger Gradio
-        input.focus();
-        input.blur();
-    } else {
-        console.log('Could not find input element');
-    }
-
-    // Find submit button by text content
-    let submitBtn = null;
-    document.querySelectorAll('button').forEach(btn => {
-        if (btn.textContent && btn.textContent.includes('Submit')) {
-            submitBtn = btn;
+        const jsonValue = JSON.stringify(selected);
+        input.value = jsonValue;
+        
+        // Trigger multiple event types to ensure Gradio picks it up
+        input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+        
+        // Also try setting the data attribute that Gradio uses
+        if (input.setAttribute) {
+            input.setAttribute('value', jsonValue);
         }
-    });
-
-    if (submitBtn) {
-        console.log('Found submit button, updating text');
-        submitBtn.textContent = `Submit (${selected.length} selected)`;
-    } else {
-        console.log('Could not find submit button');
+        
+        // Force focus/blur to trigger change detection
+        input.focus();
+        setTimeout(() => {
+            input.blur();
+            // One more change event after blur
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }, 10);
     }
+
+    // Update UI feedback
+    const submitBtn = document.querySelector('#submit-btn button') || document.querySelector('#submit-btn');
+    if (submitBtn) {
+        submitBtn.textContent = `Submit ratings (${selected.length} selected)`;
+    }
+
+    const countLabel = document.getElementById('selection-count');
+    if (countLabel) {
+        const total = document.querySelectorAll('.result-item').length;
+        countLabel.textContent = total ? `Selected: ${selected.length} of ${total}` : `Selected: ${selected.length}`;
+    }
+    
+    console.log('Selection updated:', selected);
 }
 window.toggleSelection = toggleSelection;
 """
@@ -310,7 +574,8 @@ window.toggleSelection = toggleSelection;
 def create_app():
     """Create the Gradio app interface."""
 
-    with gr.Blocks(title="Dressa - Dress Similarity Study") as app:
+    with gr.Blocks(title="Dressa - Dress Similarity Study", css=APP_CSS) as app:
+        gr.HTML(FONT_LINKS_HTML)
 
         # State variables
         session_id_state = gr.State(value=None)
@@ -405,61 +670,65 @@ University of Glasgow - School of Computing Science
         # ==================== MAIN APP SCREEN ====================
         with gr.Column(visible=False) as main_app_screen:
 
-            gr.Markdown("""
-# Dressa - Find Similar Dresses
-
-**How it works:**
-1. Upload a photo of a dress from your wardrobe
-2. Browse similar dresses found by our AI
-3. Tap dresses that look similar to yours
-
-Your ratings help us improve fashion search!
+            gr.HTML("""
+            <div id="hero">
+                <div class="hero-title">Dressa</div>
+                <div class="hero-subtitle">Upload a dress photo and tap all results that look similar.</div>
+                <div class="hero-steps">
+                    <div class="step"><span class="step-num">1</span>Upload a clear dress photo</div>
+                    <div class="step"><span class="step-num">2</span>Tap every similar dress</div>
+                    <div class="step"><span class="step-num">3</span>Submit ratings and continue</div>
+                </div>
+            </div>
             """)
 
             # Progress tracker
-            upload_progress = gr.Markdown("**Uploads: 0 / 3-5**")
+            upload_progress = gr.Markdown("Uploads completed: 0 of 3-5 recommended", elem_id="upload-progress")
 
             # Main layout
-            with gr.Row():
+            with gr.Row(elem_id="main-row"):
                 # Left column: Upload
-                with gr.Column(scale=1):
-                    gr.Markdown("### Upload Your Dress")
+                with gr.Column(scale=1, elem_id="upload-col"):
+                    gr.Markdown("### 1. Upload Your Dress")
                     upload_image = gr.Image(
                         label="Upload a dress photo",
                         type="numpy",
-                        sources=["upload", "webcam"]
+                        sources=["upload", "webcam"],
+                        elem_id="upload-image"
                     )
                     search_btn = gr.Button("Find Similar Dresses", variant="primary")
-                    status_text = gr.Markdown("")
+                    status_text = gr.Markdown("", elem_id="status-text")
 
                     # Finish button (appears after minimum uploads)
                     finish_btn = gr.Button("Finish Study", variant="secondary", visible=False)
 
                 # Right column: Results
-                with gr.Column(scale=2):
-                    gr.Markdown("### Similar Dresses")
-                    progress_text = gr.Markdown("Upload an image to start searching...")
+                with gr.Column(scale=2, elem_id="results-col"):
+                    gr.Markdown("### 2. Choose Similar Dresses")
+                    progress_text = gr.Markdown("Upload a photo to begin.", elem_id="progress-text")
 
                     # Instructions for selection
                     selection_instructions = gr.Markdown(
-                        "**Tap the dresses that are similar to yours. Tap again to deselect. "
-                        "When you are done, press Submit.**",
-                        visible=False
+                        "Tap all dresses that look similar to yours. Tap again to deselect. You can submit with zero selected.",
+                        visible=False,
+                        elem_id="selection-instructions"
                     )
+
+                    selection_count = gr.Markdown("", visible=False, elem_id="selection-count")
 
                     # Custom HTML grid for toggle selection
                     results_grid_html = gr.HTML(value="", elem_id="results-grid-container")
 
                     # Hidden textbox for selected indices
-                    with gr.Row(visible=False) as hidden_row:
-                        selected_indices_input = gr.Textbox(
-                            value="[]",
-                            elem_id="selected-indices-input"
-                        )
+                    selected_indices_input = gr.Textbox(
+                        value="[]",
+                        visible=False,
+                        elem_id="selected-indices-input"
+                    )
 
                     # Submit button
                     submit_btn = gr.Button(
-                        "Submit (0 selected)",
+                        "Submit ratings (0 selected)",
                         variant="primary",
                         size="lg",
                         visible=False,
@@ -468,7 +737,7 @@ Your ratings help us improve fashion search!
                     )
 
                     # Status message
-                    submit_status = gr.Markdown("")
+                    submit_status = gr.Markdown("", elem_id="submit-status")
 
         # ==================== DEBRIEF SCREEN ====================
         with gr.Column(visible=False) as debrief_screen:
@@ -527,94 +796,6 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             if not gallery_images:
                 return ""
 
-            # CSS styles
-            css = """
-            <style>
-            .results-grid {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 12px;
-                padding: 12px;
-                padding-bottom: 20px;
-            }
-
-            @media (min-width: 768px) {
-                .results-grid {
-                    grid-template-columns: repeat(4, 1fr);
-                }
-            }
-
-            @media (min-width: 1024px) {
-                .results-grid {
-                    grid-template-columns: repeat(5, 1fr);
-                }
-            }
-
-            .result-item {
-                position: relative;
-                aspect-ratio: 3/4;
-                cursor: pointer;
-                border-radius: 8px;
-                overflow: hidden;
-                border: 3px solid transparent;
-                transition: border-color 0.2s, transform 0.1s;
-                -webkit-tap-highlight-color: transparent;
-                user-select: none;
-                background: #f0f0f0;
-            }
-
-            .result-item:hover {
-                transform: scale(1.02);
-            }
-
-            .result-item:active {
-                transform: scale(0.98);
-            }
-
-            .result-item img {
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-                pointer-events: none;
-            }
-
-            .result-item.selected {
-                border-color: #22c55e;
-                box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3);
-            }
-
-            .result-item.selected::after {
-                content: '';
-                position: absolute;
-                top: 8px;
-                right: 8px;
-                width: 32px;
-                height: 32px;
-                background: #22c55e url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E") center/60% no-repeat;
-                border-radius: 50%;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            }
-
-            .result-item .index-badge {
-                position: absolute;
-                bottom: 8px;
-                left: 8px;
-                background: rgba(0,0,0,0.7);
-                color: white;
-                padding: 4px 10px;
-                border-radius: 4px;
-                font-size: 12px;
-                font-weight: 500;
-            }
-
-            @media (max-width: 767px) {
-                .result-item {
-                    min-height: 140px;
-                }
-            }
-            </style>
-            """
-
             # Generate image grid with base64 encoded images
             grid_items = []
             for i, img_path in enumerate(gallery_images):
@@ -630,14 +811,13 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     logger.error(f"Failed to load image {img_path}: {e}")
                     continue
                 grid_items.append(f'''
-                <div class="result-item {selected_class}" data-index="{i}" onclick="toggleSelection({i})">
+                <button class="result-item {selected_class}" data-index="{i}" onclick="toggleSelection({i})" aria-pressed="{str(i in selected_indices).lower()}" type="button">
                     <img src="{img_src}" alt="Dress {i+1}">
                     <span class="index-badge">{i+1}</span>
-                </div>
+                </button>
                 ''')
 
             html = f"""
-            {css}
             <div class="results-grid">
                 {''.join(grid_items)}
             </div>
@@ -645,65 +825,65 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
 
             return html
 
-        def on_search(image, user_id, upload_id, upload_count, progress=gr.Progress()):
+        def on_search(image, user_id, upload_id, upload_count):
             """Handle search button click."""
-            progress(0.0, desc="Validating input")
             if image is None:
                 return (
                     user_id, upload_id, [], [], [], upload_count,
-                    "Please upload an image first.",
-                    "Upload an image to start searching...",
+                    "Please upload a dress photo first.",
+                    "Upload a photo to begin.",
+                    gr.update(visible=False),
                     gr.update(visible=False),
                     "",
                     "[]",
                     gr.update(visible=False, interactive=False),
                     "",
-                    f"**Uploads: {upload_count} / 3-5**",
+                    f"Uploads completed: {upload_count} of 3-5 recommended",
                     gr.update(visible=upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
 
             # Save uploaded image
-            progress(0.05, desc="Saving upload")
             filepath = save_uploaded_image(image, user_id)
             upload_id = db.create_upload(user_id, filepath)
             new_upload_count = upload_count + 1
             logger.info(f"New upload: {upload_id} (count: {new_upload_count})")
 
             # Search for similar dresses
-            results = search_similar_dresses(image, user_id, upload_id, progress=progress)
+            results = search_similar_dresses(image, user_id, upload_id)
 
             # Filter results to corpus-only images and build gallery
-            progress(0.92, desc="Filtering images")
             filtered_results, gallery_images = filter_results_for_gallery(results)
 
             if not gallery_images:
                 return (
                     user_id, upload_id, filtered_results, [], [], new_upload_count,
-                    "Search complete, but no corpus images found. Check embeddings files.",
-                    "No results found.",
+                    "Search complete, but no corpus images were found.",
+                    "No results found. Try another photo.",
+                    gr.update(visible=False),
                     gr.update(visible=False),
                     "",
                     "[]",
                     gr.update(visible=False, interactive=False),
                     "",
-                    f"**Uploads: {new_upload_count} / 3-5**",
+                    f"Uploads completed: {new_upload_count} of 3-5 recommended",
                     gr.update(visible=new_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
 
-            progress(1.0, desc="Done")
-            progress_msg = f"Found **{len(gallery_images)}** similar dresses."
+            progress_msg = f"Found **{len(gallery_images)}** similar dresses. Tap every item that matches."
+            selection_text = f"Selected: 0 of {len(gallery_images)}"
             grid_html = generate_results_grid_html(gallery_images, [])
 
             return (
                 user_id, upload_id, filtered_results, [], gallery_images, new_upload_count,
-                "Search complete!",
+                "Search complete. Review the results and submit your ratings.",
                 progress_msg,
                 gr.update(visible=True),
+                gr.update(visible=True, value=selection_text),
                 grid_html,
                 "[]",
-                gr.update(visible=True, interactive=True, value="Submit (0 selected)"),
+                gr.update(visible=True, interactive=True, value="Submit ratings (0 selected)"),
                 "",
-                f"**Uploads: {new_upload_count} / 3-5**",
+                f"Uploads completed: {new_upload_count} of 3-5 recommended",
                 gr.update(visible=new_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
             )
 
@@ -716,14 +896,17 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 selected_indices = []
 
             count = len(selected_indices)
-            btn_text = f"Submit ({count} selected)"
+            btn_text = f"Submit ratings ({count} selected)"
+            total = len(gallery_images) if gallery_images else 0
+            count_text = f"Selected: {count} of {total}" if total else f"Selected: {count}"
 
             return (
                 selected_indices,
-                gr.update(value=btn_text, interactive=True)
+                gr.update(value=btn_text, interactive=True),
+                gr.update(value=count_text, visible=True)
             )
 
-        def on_submit(user_id, upload_id, results, selected_indices_json, gallery_images):
+        def on_submit(user_id, upload_id, results, selected_indices_json, selected_indices_state, gallery_images):
             """Handle submit button click - save all ratings."""
             import json
 
@@ -732,13 +915,19 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             logger.info(f"User ID: {user_id}")
             logger.info(f"Upload ID: {upload_id}")
             logger.info(f"Selected indices JSON: {selected_indices_json}")
+            logger.info(f"Selected indices STATE: {selected_indices_state}")
 
             try:
-                selected_indices = json.loads(selected_indices_json)
+                selected_indices = json.loads(selected_indices_json) if selected_indices_json else []
             except (json.JSONDecodeError, TypeError):
                 selected_indices = []
 
-            logger.info(f"Parsed selected indices: {selected_indices}")
+            # Fallback: use state if JSON is empty but state has values
+            if (not selected_indices or len(selected_indices) == 0) and selected_indices_state:
+                logger.info("Using selected_indices_state as fallback")
+                selected_indices = selected_indices_state if isinstance(selected_indices_state, list) else []
+
+            logger.info(f"Final selected indices: {selected_indices}")
             logger.info(f"Total results: {len(results) if results else 0}")
 
             if not results:
@@ -746,9 +935,14 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 return (
                     "No results to rate.",
                     gr.update(visible=False),
+                    gr.update(visible=False),
+                    [],
                     "[]",
                     gr.update(visible=False),
-                    ""
+                    "",
+                    "Upload a photo to begin.",
+                    "Ready for a new upload.",
+                    gr.update(value=None)
                 )
 
             selected_set = set(selected_indices)
@@ -793,14 +987,23 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             else:
                 logger.info("Corpus growth disabled; skipping add_to_corpus")
 
-            status = f"**Thank you!** Saved {similar_count} similar and {not_similar_count} not similar ratings. Upload another dress to continue."
+            total_results = len(results) if results else 0
+            status = (
+                f"**Thank you!** You marked **{similar_count} of {total_results}** as similar "
+                f"and **{not_similar_count}** as not similar. You can upload another dress now."
+            )
 
             return (
                 status,
                 gr.update(visible=False),
+                gr.update(visible=False, value=""),
+                [],
                 "[]",
                 gr.update(visible=False),
-                ""
+                "",
+                "Upload another photo to continue.",
+                "Ready for another upload.",
+                gr.update(value=None)
             )
 
         def on_finish(session_id):
@@ -844,7 +1047,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 user_id_state, upload_id_state, current_results_state,
                 selected_indices_state, gallery_images_state, upload_count_state,
                 status_text, progress_text,
-                selection_instructions, results_grid_html,
+                selection_instructions, selection_count, results_grid_html,
                 selected_indices_input, submit_btn, submit_status,
                 upload_progress, finish_btn
             ]
@@ -854,7 +1057,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
         selected_indices_input.change(
             fn=on_selection_change,
             inputs=[selected_indices_input, gallery_images_state],
-            outputs=[selected_indices_state, submit_btn]
+            outputs=[selected_indices_state, submit_btn, selection_count]
         )
 
         # Submit events
@@ -862,9 +1065,13 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             fn=on_submit,
             inputs=[
                 user_id_state, upload_id_state, current_results_state,
-                selected_indices_input, gallery_images_state
+                selected_indices_input, selected_indices_state, gallery_images_state
             ],
-            outputs=[submit_status, selection_instructions, selected_indices_input, submit_btn, results_grid_html]
+            outputs=[
+                submit_status, selection_instructions, selection_count, selected_indices_state,
+                selected_indices_input, submit_btn, results_grid_html,
+                progress_text, status_text, upload_image
+            ]
         )
 
         # Finish study events
