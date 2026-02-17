@@ -1,6 +1,6 @@
 ---
 title: Dressa User Study
-colorFrom: orange
+colorFrom: yellow
 colorTo: blue
 sdk: gradio
 app_file: app.py
