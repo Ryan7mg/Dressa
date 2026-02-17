@@ -527,17 +527,34 @@ function toggleSelection(index) {
     item.setAttribute('aria-pressed', item.classList.contains('selected'));
 
     const selected = [...document.querySelectorAll('.result-item.selected')]
-        .map(el => parseInt(el.dataset.index));
+        .map(el => parseInt(el.dataset.index))
+        .sort((a, b) => a - b);
 
+    // Update Gradio component using multiple methods for compatibility
     const input = document.querySelector('#selected-indices-input textarea, #selected-indices-input input');
     if (input) {
-        input.value = JSON.stringify(selected);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
+        const jsonValue = JSON.stringify(selected);
+        input.value = jsonValue;
+        
+        // Trigger multiple event types to ensure Gradio picks it up
+        input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+        
+        // Also try setting the data attribute that Gradio uses
+        if (input.setAttribute) {
+            input.setAttribute('value', jsonValue);
+        }
+        
+        // Force focus/blur to trigger change detection
         input.focus();
-        input.blur();
+        setTimeout(() => {
+            input.blur();
+            // One more change event after blur
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }, 10);
     }
 
+    // Update UI feedback
     const submitBtn = document.querySelector('#submit-btn button') || document.querySelector('#submit-btn');
     if (submitBtn) {
         submitBtn.textContent = `Submit ratings (${selected.length} selected)`;
@@ -548,6 +565,8 @@ function toggleSelection(index) {
         const total = document.querySelectorAll('.result-item').length;
         countLabel.textContent = total ? `Selected: ${selected.length} of ${total}` : `Selected: ${selected.length}`;
     }
+    
+    console.log('Selection updated:', selected);
 }
 window.toggleSelection = toggleSelection;
 """
@@ -896,16 +915,19 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             logger.info(f"User ID: {user_id}")
             logger.info(f"Upload ID: {upload_id}")
             logger.info(f"Selected indices JSON: {selected_indices_json}")
+            logger.info(f"Selected indices STATE: {selected_indices_state}")
 
             try:
-                selected_indices = json.loads(selected_indices_json)
+                selected_indices = json.loads(selected_indices_json) if selected_indices_json else []
             except (json.JSONDecodeError, TypeError):
                 selected_indices = []
 
-            if selected_indices_state and len(selected_indices_state) >= len(selected_indices):
-                selected_indices = selected_indices_state
+            # Fallback: use state if JSON is empty but state has values
+            if (not selected_indices or len(selected_indices) == 0) and selected_indices_state:
+                logger.info("Using selected_indices_state as fallback")
+                selected_indices = selected_indices_state if isinstance(selected_indices_state, list) else []
 
-            logger.info(f"Parsed selected indices: {selected_indices}")
+            logger.info(f"Final selected indices: {selected_indices}")
             logger.info(f"Total results: {len(results) if results else 0}")
 
             if not results:
