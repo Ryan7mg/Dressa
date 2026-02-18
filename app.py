@@ -15,6 +15,8 @@ import numpy as np
 import hashlib
 import base64
 import json
+import csv
+import html
 import uuid
 from PIL import Image
 from pathlib import Path
@@ -24,6 +26,7 @@ import logging
 import os
 import io
 import time
+import tempfile
 
 from models import ModelManager
 from utils import (
@@ -256,47 +259,122 @@ def _image_to_data_url(image_path: Path, max_size: tuple[int, int] = (360, 520))
         return None
 
 
-def _render_admin_image_section(
-    title: str,
-    image_paths: list[str],
-    empty_text: str,
-    card_class: str = "result-item"
-) -> str:
-    """Render an HTML image section for admin analytics."""
-    cards = []
-    for idx, raw_path in enumerate(image_paths):
-        resolved = None
-        if "uploads" in str(raw_path).replace("\\", "/"):
+def _resolve_result_image_path(result_image_id: str) -> Path | None:
+    """Resolve a corpus result image path stored in evaluation_ratings."""
+    if not result_image_id:
+        return None
+
+    path = Path(result_image_id)
+    if path.is_absolute() and path.exists():
+        return path.resolve()
+
+    full_path = get_image_full_path(result_image_id)
+    if full_path.exists():
+        return full_path.resolve()
+
+    fallback = IMAGES_DIR / path.name
+    if fallback.exists():
+        return fallback.resolve()
+
+    return None
+
+
+def _render_admin_thumb(image_path: Path, alt_text: str) -> str:
+    """Render one admin thumbnail image as HTML."""
+    src = _image_to_data_url(image_path, max_size=(220, 300))
+    if not src:
+        return ""
+    safe_alt = html.escape(alt_text)
+    return f'<img class="admin-thumb" src="{src}" alt="{safe_alt}">'
+
+
+def _render_admin_thumb_grid(image_paths: list[str], empty_text: str, is_query: bool = False) -> str:
+    """Render a bounded thumbnail grid from image path strings."""
+    thumbs = []
+    for raw_path in image_paths:
+        if is_query:
             resolved = _resolve_upload_image_path(raw_path)
         else:
-            resolved = get_image_full_path(raw_path)
-            if not resolved.exists():
-                resolved = None
-
+            resolved = _resolve_result_image_path(raw_path)
         if not resolved:
             continue
+        thumb = _render_admin_thumb(resolved, f"dress image {resolved.name}")
+        if thumb:
+            thumbs.append(thumb)
 
-        src = _image_to_data_url(resolved)
-        if not src:
-            continue
+    if not thumbs:
+        return f'<div class="admin-empty">{html.escape(empty_text)}</div>'
 
-        cards.append(
+    grid_class = "admin-query-grid" if is_query else "admin-thumb-grid"
+    return f'<div class="{grid_class}">{"".join(thumbs)}</div>'
+
+
+def _render_visual_table_html(records: list[dict]) -> str:
+    """Render visual comparison table (query, selected, not-selected)."""
+    if not records:
+        return '<div class="admin-empty">No uploads available for visual comparison.</div>'
+
+    rows_html = []
+    for rec in records:
+        uploaded_at = html.escape(rec.get("uploaded_at", ""))
+        user_id = html.escape(rec.get("user_id", ""))
+        upload_id = html.escape(rec.get("upload_id", ""))
+        total_results = rec.get("total_results", 0)
+        similar_count = rec.get("similar_count", 0)
+        not_similar_count = rec.get("not_similar_count", 0)
+
+        query_html = _render_admin_thumb_grid(
+            [rec.get("query_image_path", "")],
+            empty_text="No query image",
+            is_query=True,
+        )
+        selected_html = _render_admin_thumb_grid(
+            rec.get("selected_image_paths", []),
+            empty_text="No selected images",
+            is_query=False,
+        )
+        not_selected_html = _render_admin_thumb_grid(
+            rec.get("not_selected_image_paths", []),
+            empty_text="No not-selected images",
+            is_query=False,
+        )
+
+        rows_html.append(
             f"""
-            <div class="{card_class}">
-                <img src="{src}" alt="{title} {idx + 1}">
-            </div>
+            <tr>
+                <td><div class="admin-meta">{uploaded_at}</div></td>
+                <td><div class="admin-meta">{user_id}</div></td>
+                <td><div class="admin-meta">{upload_id}</div></td>
+                <td><div class="admin-meta">{total_results}</div></td>
+                <td><div class="admin-meta">{similar_count}</div></td>
+                <td><div class="admin-meta">{not_similar_count}</div></td>
+                <td>{query_html}</td>
+                <td>{selected_html}</td>
+                <td>{not_selected_html}</td>
+            </tr>
             """
         )
 
-    if not cards:
-        cards_html = f"<p style='color: var(--muted);'>{empty_text}</p>"
-    else:
-        cards_html = f"<div class='results-grid'>{''.join(cards)}</div>"
-
     return f"""
-    <div style="margin-bottom: 14px;">
-        <h4 style="margin: 0 0 8px 0;">{title}</h4>
-        {cards_html}
+    <div class="admin-visual-wrap">
+      <table class="admin-visual-table">
+        <thead>
+          <tr>
+            <th>uploaded_at</th>
+            <th>user_id</th>
+            <th>upload_id</th>
+            <th>total_results</th>
+            <th>selected_count</th>
+            <th>not_selected_count</th>
+            <th>query_image</th>
+            <th>selected_images</th>
+            <th>not_selected_images</th>
+          </tr>
+        </thead>
+        <tbody>
+          {''.join(rows_html)}
+        </tbody>
+      </table>
     </div>
     """
 
@@ -406,17 +484,17 @@ def load_model_leaderboard(min_support: int = MIN_SUPPORT_FOR_BEST_MODEL) -> tup
     return summary, leaderboard_rows, status
 
 
-def load_live_entries(max_uploads: int = 100) -> tuple[str, list[list], dict]:
+def load_live_entries(max_uploads: int = 100) -> tuple[str, list[list], str]:
     """
     Build live per-upload analytics rows.
 
     Returns:
-        status_message, dataframe_rows, details_by_upload_id
+        status_message, summary_rows, visual_table_html
     """
     global db
 
     if db is None:
-        return "Database is not initialized.", [], {}
+        return "Database is not initialized.", [], '<div class="admin-empty">Database unavailable.</div>'
 
     with db._get_connection() as conn:
         cur = conn.cursor()
@@ -431,17 +509,24 @@ def load_live_entries(max_uploads: int = 100) -> tuple[str, list[list], dict]:
         )
         upload_rows = [dict(row) for row in cur.fetchall()]
 
-        cur.execute(
-            """
-            SELECT upload_id, result_image_id, rating, display_position, timestamp
-            FROM evaluation_ratings
-            ORDER BY upload_id, display_position ASC, timestamp ASC
-            """
-        )
-        rating_rows = [dict(row) for row in cur.fetchall()]
+        upload_ids = [row["upload_id"] for row in upload_rows]
+        if upload_ids:
+            placeholders = ",".join(["?"] * len(upload_ids))
+            cur.execute(
+                f"""
+                SELECT upload_id, result_image_id, rating, display_position, timestamp
+                FROM evaluation_ratings
+                WHERE upload_id IN ({placeholders})
+                ORDER BY upload_id, display_position ASC, timestamp ASC
+                """,
+                tuple(upload_ids),
+            )
+            rating_rows = [dict(row) for row in cur.fetchall()]
+        else:
+            rating_rows = []
 
     if not upload_rows:
-        return "No uploads found yet.", [], {}
+        return "No uploads found yet.", [], '<div class="admin-empty">No uploads found yet.</div>'
 
     ratings_by_upload: dict[str, list[dict]] = {}
     for row in rating_rows:
@@ -450,83 +535,129 @@ def load_live_entries(max_uploads: int = 100) -> tuple[str, list[list], dict]:
             ratings_by_upload[upload_id] = []
         ratings_by_upload[upload_id].append(row)
 
-    table_rows: list[list] = []
-    details_by_upload: dict[str, dict] = {}
+    summary_rows: list[list] = []
+    visual_records: list[dict] = []
 
     for upload in upload_rows:
         upload_id = upload["upload_id"]
         rows = ratings_by_upload.get(upload_id, [])
         similar_rows = [r for r in rows if r.get("rating") == "similar"]
         not_similar_rows = [r for r in rows if r.get("rating") == "not_similar"]
-        not_similar_rows.sort(
-            key=lambda r: (
-                r.get("display_position") if r.get("display_position") is not None else 10**9,
-                r.get("timestamp") or "",
-            )
-        )
 
         similar_image_paths = [r.get("result_image_id", "") for r in similar_rows if r.get("result_image_id")]
-        top_not_similar_path = (
-            not_similar_rows[0].get("result_image_id", "")
-            if not_similar_rows
-            else ""
-        )
+        not_selected_image_paths = [
+            r.get("result_image_id", "")
+            for r in not_similar_rows
+            if r.get("result_image_id")
+        ]
 
-        selected_similar_json = json.dumps(similar_image_paths)
-        table_rows.append(
+        total_results = len(rows)
+        summary_rows.append(
             [
                 upload.get("uploaded_at", ""),
-                upload_id,
                 upload.get("user_id", ""),
-                upload.get("filepath", ""),
+                upload_id,
+                total_results,
                 len(similar_rows),
                 len(not_similar_rows),
-                top_not_similar_path,
-                selected_similar_json,
             ]
         )
 
-        details_by_upload[upload_id] = {
-            "query_image_path": upload.get("filepath", ""),
-            "similar_image_paths": similar_image_paths,
-            "top_not_similar_image_path": top_not_similar_path,
-        }
+        visual_records.append(
+            {
+                "uploaded_at": upload.get("uploaded_at", ""),
+                "user_id": upload.get("user_id", ""),
+                "upload_id": upload_id,
+                "total_results": total_results,
+                "similar_count": len(similar_rows),
+                "not_similar_count": len(not_similar_rows),
+                "query_image_path": upload.get("filepath", ""),
+                "selected_image_paths": similar_image_paths,
+                "not_selected_image_paths": not_selected_image_paths,
+            }
+        )
 
-    status = f"Loaded {len(table_rows)} uploads (default limit {int(max_uploads)})."
-    return status, table_rows, details_by_upload
+    visual_table_html = _render_visual_table_html(visual_records)
+    status = f"Loaded {len(summary_rows)} uploads (default limit {int(max_uploads)})."
+    return status, summary_rows, visual_table_html
 
 
-def render_upload_entry_gallery(upload_id: str, details_by_upload: dict) -> tuple[str, str]:
-    """Render query/similar/not-similar image sections for a selected upload."""
-    if not upload_id:
-        return "", "Select an upload to preview images."
+def export_raw_ratings_csv() -> tuple[str | None, str]:
+    """Export raw joined evaluation data to CSV and return file path."""
+    global db
 
-    detail = details_by_upload.get(upload_id)
-    if not detail:
-        return "", f"No details found for upload_id `{upload_id}`."
+    if db is None:
+        return None, "Database is not initialized."
 
-    query_html = _render_admin_image_section(
-        title="Query Image",
-        image_paths=[detail.get("query_image_path", "")],
-        empty_text="No query image available.",
-    )
-    similar_html = _render_admin_image_section(
-        title="Selected Similar Images",
-        image_paths=detail.get("similar_image_paths", []),
-        empty_text="No images marked as similar for this upload.",
-    )
-    not_similar_html = _render_admin_image_section(
-        title="Top Not Similar Image",
-        image_paths=[detail.get("top_not_similar_image_path", "")],
-        empty_text="No not-similar image available for this upload.",
-    )
+    with db._get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT
+                e.rating_id,
+                e.user_id,
+                e.upload_id,
+                u.uploaded_at,
+                u.filepath AS query_image_path,
+                e.result_image_id,
+                e.rating,
+                e.display_position,
+                e.provenance,
+                e.timestamp
+            FROM evaluation_ratings e
+            LEFT JOIN uploads u ON e.upload_id = u.upload_id
+            ORDER BY e.timestamp DESC
+            """
+        )
+        rows = [dict(row) for row in cur.fetchall()]
 
-    html = f"{query_html}{similar_html}{not_similar_html}"
-    info = (
-        f"Showing upload `{upload_id}` | "
-        f"Similar selected: **{len(detail.get('similar_image_paths', []))}**"
-    )
-    return html, info
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_path = Path(tempfile.gettempdir()) / f"dressa_raw_ratings_{timestamp}.csv"
+    fieldnames = [
+        "rating_id",
+        "user_id",
+        "upload_id",
+        "uploaded_at",
+        "query_image_path",
+        "result_image_id",
+        "rating",
+        "display_position",
+        "provenance",
+        "timestamp",
+    ]
+    with open(output_path, "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+
+    return str(output_path), f"Exported {len(rows)} raw rows to CSV."
+
+
+def _normalize_selected_indices(raw_indices, total_results: int) -> list[int]:
+    """Parse, dedupe, and bounds-check selected index values."""
+    if raw_indices is None:
+        parsed = []
+    elif isinstance(raw_indices, str):
+        try:
+            parsed = json.loads(raw_indices) if raw_indices else []
+        except (json.JSONDecodeError, TypeError):
+            parsed = []
+    elif isinstance(raw_indices, list):
+        parsed = raw_indices
+    else:
+        parsed = []
+
+    normalized = []
+    for idx in parsed:
+        try:
+            idx_int = int(idx)
+        except (TypeError, ValueError):
+            continue
+        if 0 <= idx_int < total_results:
+            normalized.append(idx_int)
+
+    return sorted(set(normalized))
 
 
 def add_to_corpus(upload_id: str, filepath: str):
@@ -832,45 +963,99 @@ div[data-testid="progress"] {
 .progress, .progress-bar, .progress-text, .wrap .progress {
     display: none !important;
 }
+
+.admin-visual-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #fff;
+}
+
+.admin-visual-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1200px;
+}
+
+.admin-visual-table th,
+.admin-visual-table td {
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    padding: 10px;
+    vertical-align: top;
+}
+
+.admin-visual-table th:last-child,
+.admin-visual-table td:last-child {
+    border-right: none;
+}
+
+.admin-visual-table th {
+    background: #faf5ef;
+    font-weight: 700;
+    text-align: left;
+}
+
+.admin-meta {
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.admin-thumb-grid,
+.admin-query-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+    max-height: 280px;
+    overflow-y: auto;
+    min-width: 250px;
+}
+
+.admin-query-grid {
+    min-width: 180px;
+    max-width: 220px;
+}
+
+.admin-thumb {
+    width: 100%;
+    max-width: 180px;
+    aspect-ratio: 3/4;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #f5f2ed;
+}
+
+.admin-empty {
+    color: var(--muted);
+    font-size: 12px;
+}
 """
 
 # JavaScript for toggle selection functionality (passed to launch() for Gradio 6.0+)
 TOGGLE_JS = """
-function toggleSelection(index) {
-    const item = document.querySelector(`[data-index="${index}"]`);
-    if (!item) return;
-    item.classList.toggle('selected');
-    item.setAttribute('aria-pressed', item.classList.contains('selected'));
-
-    const selected = [...document.querySelectorAll('.result-item.selected')]
-        .map(el => parseInt(el.dataset.index))
+function getSelectedIndices() {
+    return [...document.querySelectorAll('.result-item.selected')]
+        .map(el => Number.parseInt(el.dataset.index, 10))
+        .filter(Number.isInteger)
         .sort((a, b) => a - b);
+}
 
-    // Update Gradio component using multiple methods for compatibility
+function syncSelectedIndicesToInput() {
+    const selected = getSelectedIndices();
     const input = document.querySelector('#selected-indices-input textarea, #selected-indices-input input');
     if (input) {
         const jsonValue = JSON.stringify(selected);
         input.value = jsonValue;
-        
-        // Trigger multiple event types to ensure Gradio picks it up
+        input.setAttribute('value', jsonValue);
         input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
         input.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
-        
-        // Also try setting the data attribute that Gradio uses
-        if (input.setAttribute) {
-            input.setAttribute('value', jsonValue);
-        }
-        
-        // Force focus/blur to trigger change detection
-        input.focus();
-        setTimeout(() => {
-            input.blur();
-            // One more change event after blur
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-        }, 10);
     }
+    return selected;
+}
 
-    // Update UI feedback
+function updateSelectionUi(selected) {
     const submitBtn = document.querySelector('#submit-btn button') || document.querySelector('#submit-btn');
     if (submitBtn) {
         submitBtn.textContent = `Submit ratings (${selected.length} selected)`;
@@ -881,10 +1066,31 @@ function toggleSelection(index) {
         const total = document.querySelectorAll('.result-item').length;
         countLabel.textContent = total ? `Selected: ${selected.length} of ${total}` : `Selected: ${selected.length}`;
     }
-    
+}
+
+function toggleSelection(index) {
+    const item = document.querySelector(`[data-index="${index}"]`);
+    if (!item) return;
+    item.classList.toggle('selected');
+    item.setAttribute('aria-pressed', item.classList.contains('selected'));
+
+    const selected = syncSelectedIndicesToInput();
+    updateSelectionUi(selected);
     console.log('Selection updated:', selected);
 }
+
 window.toggleSelection = toggleSelection;
+window.syncSelectedIndicesToInput = syncSelectedIndicesToInput;
+
+if (!window.__dressaSubmitSyncAttached) {
+    document.addEventListener('click', function(event) {
+        const submit = event.target.closest('#submit-btn button, #submit-btn');
+        if (!submit) return;
+        const selected = syncSelectedIndicesToInput();
+        updateSelectionUi(selected);
+    }, true);
+    window.__dressaSubmitSyncAttached = true;
+}
 """
 
 def create_app():
@@ -901,7 +1107,6 @@ def create_app():
         selected_indices_state = gr.State(value=[])
         gallery_images_state = gr.State(value=[])
         upload_count_state = gr.State(value=0)
-        admin_entry_details_state = gr.State(value={})
 
         # ==================== CONSENT SCREEN ====================
         with gr.Column(visible=True) as consent_screen:
@@ -1131,7 +1336,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                         label="Per-model performance",
                     )
 
-                with gr.Tab("Live entries (images + tables)"):
+                with gr.Tab("Live entries (tables + visuals)"):
                     with gr.Row():
                         max_uploads_dropdown = gr.Dropdown(
                             choices=[20, 50, 100, 200],
@@ -1143,30 +1348,28 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                         )
 
                     entries_status = gr.Markdown("")
-                    entries_df = gr.Dataframe(
+                    summary_df = gr.Dataframe(
                         headers=[
                             "uploaded_at",
-                            "upload_id",
                             "user_id",
-                            "query_image_path",
-                            "similar_count",
+                            "upload_id",
+                            "total_results",
+                            "selected_count",
                             "not_similar_count",
-                            "top_not_similar_image_path",
-                            "selected_similar_image_paths",
                         ],
-                        datatype=["str", "str", "str", "str", "number", "number", "str", "str"],
+                        datatype=["str", "str", "str", "number", "number", "number"],
                         value=[],
                         interactive=False,
                         wrap=True,
-                        label="Per-upload live analytics",
+                        label="Table A: Upload/session summary",
                     )
-                    selected_upload_dropdown = gr.Dropdown(
-                        choices=[],
-                        value=None,
-                        label="Select upload_id for image preview",
-                    )
-                    selected_entry_info = gr.Markdown("")
-                    selected_entry_gallery_html = gr.HTML(value="")
+                    gr.Markdown("### Table B: Visual comparison")
+                    visual_table_html = gr.HTML(value="")
+
+                    with gr.Row():
+                        raw_csv_btn = gr.Button("Download raw data CSV", variant="secondary")
+                        raw_csv_file = gr.File(label="CSV file", interactive=False)
+                    raw_csv_status = gr.Markdown("")
 
         # ==================== Event Handlers ====================
 
@@ -1288,15 +1491,11 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
 
         def on_selection_change(selected_indices_json, gallery_images):
             """Handle selection change from JavaScript."""
-            import json
-            try:
-                selected_indices = json.loads(selected_indices_json)
-            except (json.JSONDecodeError, TypeError):
-                selected_indices = []
+            total = len(gallery_images) if gallery_images else 0
+            selected_indices = _normalize_selected_indices(selected_indices_json, total)
 
             count = len(selected_indices)
             btn_text = f"Submit ratings ({count} selected)"
-            total = len(gallery_images) if gallery_images else 0
             count_text = f"Selected: {count} of {total}" if total else f"Selected: {count}"
 
             return (
@@ -1307,27 +1506,21 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
 
         def on_submit(user_id, upload_id, results, selected_indices_json, selected_indices_state, gallery_images):
             """Handle submit button click - save all ratings."""
-            import json
-
             logger.info("=" * 50)
             logger.info("SUBMIT BUTTON CLICKED")
             logger.info(f"User ID: {user_id}")
             logger.info(f"Upload ID: {upload_id}")
             logger.info(f"Selected indices JSON: {selected_indices_json}")
             logger.info(f"Selected indices STATE: {selected_indices_state}")
+            total_results = len(results) if results else 0
+            selected_from_json = _normalize_selected_indices(selected_indices_json, total_results)
+            selected_from_state = _normalize_selected_indices(selected_indices_state, total_results)
+            selected_indices = selected_from_json if selected_from_json else selected_from_state
 
-            try:
-                selected_indices = json.loads(selected_indices_json) if selected_indices_json else []
-            except (json.JSONDecodeError, TypeError):
-                selected_indices = []
-
-            # Fallback: use state if JSON is empty but state has values
-            if (not selected_indices or len(selected_indices) == 0) and selected_indices_state:
-                logger.info("Using selected_indices_state as fallback")
-                selected_indices = selected_indices_state if isinstance(selected_indices_state, list) else []
-
+            logger.info(f"Normalized selected indices (JSON): {selected_from_json}")
+            logger.info(f"Normalized selected indices (state): {selected_from_state}")
             logger.info(f"Final selected indices: {selected_indices}")
-            logger.info(f"Total results: {len(results) if results else 0}")
+            logger.info(f"Total results: {total_results}")
 
             if not results:
                 logger.warning("No results to rate")
@@ -1386,7 +1579,6 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             else:
                 logger.info("Corpus growth disabled; skipping add_to_corpus")
 
-            total_results = len(results) if results else 0
             status = (
                 f"**Thank you!** You marked **{similar_count} of {total_results}** as similar "
                 f"and **{not_similar_count}** as not similar. You can upload another dress now."
@@ -1417,28 +1609,9 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             """Handle close button on debrief screen."""
             return gr.update(value="Thank you for participating. You may close this window.")
 
-        def load_entries_and_preview(max_uploads: int):
-            """Load per-upload analytics and render the first entry preview."""
-            status, table_rows, details_by_upload = load_live_entries(int(max_uploads))
-            upload_ids = list(details_by_upload.keys())
-            if upload_ids:
-                default_upload_id = upload_ids[0]
-                preview_html, preview_info = render_upload_entry_gallery(
-                    default_upload_id, details_by_upload
-                )
-            else:
-                default_upload_id = None
-                preview_html = ""
-                preview_info = "No upload entries to preview."
-
-            return (
-                status,
-                table_rows,
-                details_by_upload,
-                gr.update(choices=upload_ids, value=default_upload_id),
-                preview_html,
-                preview_info,
-            )
+        def load_admin_tables(max_uploads: int):
+            """Load summary + visual admin tables."""
+            return load_live_entries(int(max_uploads))
 
         def on_unlock_admin(input_password: str):
             """Unlock admin panel and auto-load leaderboard + live entries."""
@@ -1452,10 +1625,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     "Admin secret is not configured.",
                     "Admin is locked.",
                     [],
-                    {},
-                    gr.update(choices=[], value=None),
-                    "",
-                    "No entry selected.",
+                    '<div class="admin-empty">Admin is locked.</div>',
                 )
 
             if not verify_admin_password(input_password):
@@ -1468,10 +1638,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     "Leaderboard not loaded.",
                     "Entries not loaded.",
                     [],
-                    {},
-                    gr.update(choices=[], value=None),
-                    "",
-                    "No entry selected.",
+                    '<div class="admin-empty">Admin is locked.</div>',
                 )
 
             leaderboard_summary_text, leaderboard_rows, leaderboard_status_text = load_model_leaderboard(
@@ -1479,12 +1646,9 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             )
             (
                 entries_status_text,
-                entries_rows,
-                details_by_upload,
-                selected_upload_update,
-                preview_html,
-                preview_info,
-            ) = load_entries_and_preview(100)
+                summary_rows,
+                visual_html,
+            ) = load_admin_tables(100)
 
             return (
                 "✅ Admin unlocked.",
@@ -1494,11 +1658,8 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 leaderboard_rows,
                 leaderboard_status_text,
                 entries_status_text,
-                entries_rows,
-                details_by_upload,
-                selected_upload_update,
-                preview_html,
-                preview_info,
+                summary_rows,
+                visual_html,
             )
 
         def on_refresh_leaderboard():
@@ -1507,11 +1668,14 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
 
         def on_refresh_live_entries(max_uploads: int):
             """Refresh live entries tab."""
-            return load_entries_and_preview(max_uploads)
+            return load_admin_tables(max_uploads)
 
-        def on_select_live_entry(upload_id: str, details_by_upload: dict):
-            """Render selected upload's images in the admin preview section."""
-            return render_upload_entry_gallery(upload_id, details_by_upload)
+        def on_download_raw_csv():
+            """Generate and return raw CSV export."""
+            filepath, status = export_raw_ratings_csv()
+            if filepath:
+                return gr.update(value=filepath, visible=True), status
+            return gr.update(value=None, visible=False), status
 
         # ==================== Wire up events ====================
 
@@ -1595,11 +1759,8 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 leaderboard_df,
                 leaderboard_status,
                 entries_status,
-                entries_df,
-                admin_entry_details_state,
-                selected_upload_dropdown,
-                selected_entry_gallery_html,
-                selected_entry_info,
+                summary_df,
+                visual_table_html,
             ],
         )
 
@@ -1614,18 +1775,15 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             inputs=[max_uploads_dropdown],
             outputs=[
                 entries_status,
-                entries_df,
-                admin_entry_details_state,
-                selected_upload_dropdown,
-                selected_entry_gallery_html,
-                selected_entry_info,
+                summary_df,
+                visual_table_html,
             ],
         )
 
-        selected_upload_dropdown.change(
-            fn=on_select_live_entry,
-            inputs=[selected_upload_dropdown, admin_entry_details_state],
-            outputs=[selected_entry_gallery_html, selected_entry_info],
+        raw_csv_btn.click(
+            fn=on_download_raw_csv,
+            inputs=[],
+            outputs=[raw_csv_file, raw_csv_status],
         )
 
     return app
