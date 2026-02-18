@@ -1744,13 +1744,6 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             ]
         )
 
-        # Selection change events
-        selected_indices_input.change(
-            fn=on_selection_change,
-            inputs=[selected_indices_input, gallery_images_state],
-            outputs=[selected_indices_state, submit_btn, selection_count]
-        )
-
         # Submit events
         submit_btn.click(
             fn=on_submit,
