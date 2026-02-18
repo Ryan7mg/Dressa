@@ -1031,6 +1031,28 @@ div[data-testid="progress"] {
     color: var(--muted);
     font-size: 12px;
 }
+
+/* Keep selected-indices textbox mounted for JS->Gradio sync, but visually hidden */
+#selected-indices-input {
+    display: block !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+}
+
+#selected-indices-input textarea,
+#selected-indices-input input {
+    opacity: 0 !important;
+    height: 1px !important;
+    min-height: 1px !important;
+    pointer-events: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+}
 """
 
 # JavaScript for toggle selection functionality (passed to launch() for Gradio 6.0+)
@@ -1044,13 +1066,21 @@ function getSelectedIndices() {
 
 function syncSelectedIndicesToInput() {
     const selected = getSelectedIndices();
-    const input = document.querySelector('#selected-indices-input textarea, #selected-indices-input input');
+    let input = document.querySelector('#selected-indices-input textarea, #selected-indices-input input');
+    if (!input) {
+        const maybeInput = document.getElementById('selected-indices-input');
+        if (maybeInput && (maybeInput.tagName === 'INPUT' || maybeInput.tagName === 'TEXTAREA')) {
+            input = maybeInput;
+        }
+    }
     if (input) {
         const jsonValue = JSON.stringify(selected);
         input.value = jsonValue;
         input.setAttribute('value', jsonValue);
         input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
         input.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+    } else {
+        console.warn('selected-indices-input not found in DOM; submit may lose selections');
     }
     return selected;
 }
@@ -1244,8 +1274,10 @@ University of Glasgow - School of Computing Science
                     # Hidden textbox for selected indices
                     selected_indices_input = gr.Textbox(
                         value="[]",
-                        visible=False,
-                        elem_id="selected-indices-input"
+                        visible=True,
+                        container=False,
+                        elem_id="selected-indices-input",
+                        label="",
                     )
 
                     # Submit button
