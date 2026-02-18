@@ -20,3 +20,4 @@ Public Gradio app for a dress-similarity user study.
 - `DRESSA_EMBEDDINGS_DIR` (default: `./embeddings`)
 - `DRESSA_PRELOAD_MODELS` (`0` or `1`, default `0`)
 - `DRESSA_ENABLE_CORPUS_GROWTH` (`0` or `1`, default `0`)
+- `DRESSA_ADMIN_PASSWORD` (set as Space Secret to unlock admin analytics panel)

@@ -14,6 +14,7 @@ import gradio as gr
 import numpy as np
 import hashlib
 import base64
+import json
 import uuid
 from PIL import Image
 from pathlib import Path
@@ -61,6 +62,8 @@ MIN_UPLOADS_FOR_DEBRIEF = 3  # Minimum uploads before showing debrief
 PRELOAD_MODELS = os.getenv("DRESSA_PRELOAD_MODELS", "0") == "1"
 # Optional: allow user uploads to be added to the corpus
 ENABLE_CORPUS_GROWTH = os.getenv("DRESSA_ENABLE_CORPUS_GROWTH", "0") == "1"
+ADMIN_PASSWORD = os.getenv("DRESSA_ADMIN_PASSWORD", "")
+MIN_SUPPORT_FOR_BEST_MODEL = 30
 
 
 def init_app():
@@ -215,6 +218,315 @@ def filter_results_for_gallery(results: list) -> tuple[list, list]:
         gallery_images.append(str(full_path))
 
     return filtered_results, gallery_images
+
+
+def _resolve_upload_image_path(filepath: str) -> Path | None:
+    """Resolve a query upload path from DB to an existing local file."""
+    if not filepath:
+        return None
+
+    path = Path(filepath)
+    if path.is_absolute() and path.exists():
+        return path.resolve()
+
+    candidates = [
+        APP_DIR / filepath,
+        UPLOADS_DIR / path.name,
+        UPLOADS_DIR / filepath,
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate.resolve()
+
+    return None
+
+
+def _image_to_data_url(image_path: Path, max_size: tuple[int, int] = (360, 520)) -> str | None:
+    """Return a base64 data URL for an image path."""
+    try:
+        with Image.open(image_path) as img:
+            img = img.convert("RGB")
+            img.thumbnail(max_size, Image.Resampling.LANCZOS)
+            buffer = io.BytesIO()
+            img.save(buffer, format="JPEG", quality=85)
+            img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+            return f"data:image/jpeg;base64,{img_base64}"
+    except Exception as exc:
+        logger.warning(f"Failed to encode image for admin panel: {image_path} ({exc})")
+        return None
+
+
+def _render_admin_image_section(
+    title: str,
+    image_paths: list[str],
+    empty_text: str,
+    card_class: str = "result-item"
+) -> str:
+    """Render an HTML image section for admin analytics."""
+    cards = []
+    for idx, raw_path in enumerate(image_paths):
+        resolved = None
+        if "uploads" in str(raw_path).replace("\\", "/"):
+            resolved = _resolve_upload_image_path(raw_path)
+        else:
+            resolved = get_image_full_path(raw_path)
+            if not resolved.exists():
+                resolved = None
+
+        if not resolved:
+            continue
+
+        src = _image_to_data_url(resolved)
+        if not src:
+            continue
+
+        cards.append(
+            f"""
+            <div class="{card_class}">
+                <img src="{src}" alt="{title} {idx + 1}">
+            </div>
+            """
+        )
+
+    if not cards:
+        cards_html = f"<p style='color: var(--muted);'>{empty_text}</p>"
+    else:
+        cards_html = f"<div class='results-grid'>{''.join(cards)}</div>"
+
+    return f"""
+    <div style="margin-bottom: 14px;">
+        <h4 style="margin: 0 0 8px 0;">{title}</h4>
+        {cards_html}
+    </div>
+    """
+
+
+def verify_admin_password(input_password: str) -> bool:
+    """Validate admin password from Space secret."""
+    if not ADMIN_PASSWORD:
+        return False
+    return input_password == ADMIN_PASSWORD
+
+
+def load_model_leaderboard(min_support: int = MIN_SUPPORT_FOR_BEST_MODEL) -> tuple[str, list[list], str]:
+    """
+    Build model leaderboard from evaluation_ratings provenance.
+
+    Returns:
+        summary_markdown, leaderboard_rows, status_message
+    """
+    global db
+
+    if db is None:
+        return "### Best Model Right Now\nApp database is not initialized.", [], "Database is not initialized."
+
+    with db._get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT rating, provenance FROM evaluation_ratings")
+        rows = [dict(row) for row in cur.fetchall()]
+
+    if not rows:
+        summary = "### Best Model Right Now\nNo winner yet. No evaluation data has been collected."
+        return summary, [], "No evaluation ratings found."
+
+    stats: dict[str, dict[str, float]] = {}
+    for row in rows:
+        rating = row.get("rating")
+        try:
+            provenance = json.loads(row.get("provenance", "{}"))
+        except Exception:
+            continue
+        if not isinstance(provenance, dict):
+            continue
+
+        for model_name in provenance.keys():
+            if model_name not in stats:
+                stats[model_name] = {
+                    "total_recommendations": 0,
+                    "similar_count": 0,
+                }
+            stats[model_name]["total_recommendations"] += 1
+            if rating == "similar":
+                stats[model_name]["similar_count"] += 1
+
+    leaderboard_records = []
+    for model_name, model_stats in stats.items():
+        total = int(model_stats["total_recommendations"])
+        similar = int(model_stats["similar_count"])
+        hit_rate = (similar / total) if total > 0 else 0.0
+        eligible = total >= min_support
+        leaderboard_records.append({
+            "model": model_name,
+            "total_recommendations": total,
+            "similar_count": similar,
+            "hit_rate": hit_rate,
+            "eligible": eligible,
+        })
+
+    leaderboard_records.sort(
+        key=lambda rec: (
+            rec["hit_rate"],
+            rec["similar_count"],
+            rec["total_recommendations"],
+            rec["model"],
+        ),
+        reverse=True,
+    )
+
+    eligible_records = [rec for rec in leaderboard_records if rec["eligible"]]
+    refreshed_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if eligible_records:
+        winner = eligible_records[0]
+        summary = (
+            "### Best Model Right Now\n"
+            f"**{winner['model']}** | "
+            f"Hit rate: **{winner['hit_rate']:.3f}** | "
+            f"Similar: **{winner['similar_count']}** / **{winner['total_recommendations']}**\n\n"
+            f"Refreshed: `{refreshed_at}`"
+        )
+    else:
+        summary = (
+            "### Best Model Right Now\n"
+            f"No winner yet (need at least **{min_support}** recommendations per model).\n\n"
+            f"Refreshed: `{refreshed_at}`"
+        )
+
+    leaderboard_rows = [
+        [
+            rec["model"],
+            rec["total_recommendations"],
+            rec["similar_count"],
+            round(rec["hit_rate"], 3),
+            "yes" if rec["eligible"] else "no",
+        ]
+        for rec in leaderboard_records
+    ]
+
+    status = f"Loaded leaderboard for {len(leaderboard_records)} models from {len(rows)} ratings."
+    return summary, leaderboard_rows, status
+
+
+def load_live_entries(max_uploads: int = 100) -> tuple[str, list[list], dict]:
+    """
+    Build live per-upload analytics rows.
+
+    Returns:
+        status_message, dataframe_rows, details_by_upload_id
+    """
+    global db
+
+    if db is None:
+        return "Database is not initialized.", [], {}
+
+    with db._get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT upload_id, user_id, filepath, uploaded_at
+            FROM uploads
+            ORDER BY uploaded_at DESC
+            LIMIT ?
+            """,
+            (int(max_uploads),),
+        )
+        upload_rows = [dict(row) for row in cur.fetchall()]
+
+        cur.execute(
+            """
+            SELECT upload_id, result_image_id, rating, display_position, timestamp
+            FROM evaluation_ratings
+            ORDER BY upload_id, display_position ASC, timestamp ASC
+            """
+        )
+        rating_rows = [dict(row) for row in cur.fetchall()]
+
+    if not upload_rows:
+        return "No uploads found yet.", [], {}
+
+    ratings_by_upload: dict[str, list[dict]] = {}
+    for row in rating_rows:
+        upload_id = row["upload_id"]
+        if upload_id not in ratings_by_upload:
+            ratings_by_upload[upload_id] = []
+        ratings_by_upload[upload_id].append(row)
+
+    table_rows: list[list] = []
+    details_by_upload: dict[str, dict] = {}
+
+    for upload in upload_rows:
+        upload_id = upload["upload_id"]
+        rows = ratings_by_upload.get(upload_id, [])
+        similar_rows = [r for r in rows if r.get("rating") == "similar"]
+        not_similar_rows = [r for r in rows if r.get("rating") == "not_similar"]
+        not_similar_rows.sort(
+            key=lambda r: (
+                r.get("display_position") if r.get("display_position") is not None else 10**9,
+                r.get("timestamp") or "",
+            )
+        )
+
+        similar_image_paths = [r.get("result_image_id", "") for r in similar_rows if r.get("result_image_id")]
+        top_not_similar_path = (
+            not_similar_rows[0].get("result_image_id", "")
+            if not_similar_rows
+            else ""
+        )
+
+        selected_similar_json = json.dumps(similar_image_paths)
+        table_rows.append(
+            [
+                upload.get("uploaded_at", ""),
+                upload_id,
+                upload.get("user_id", ""),
+                upload.get("filepath", ""),
+                len(similar_rows),
+                len(not_similar_rows),
+                top_not_similar_path,
+                selected_similar_json,
+            ]
+        )
+
+        details_by_upload[upload_id] = {
+            "query_image_path": upload.get("filepath", ""),
+            "similar_image_paths": similar_image_paths,
+            "top_not_similar_image_path": top_not_similar_path,
+        }
+
+    status = f"Loaded {len(table_rows)} uploads (default limit {int(max_uploads)})."
+    return status, table_rows, details_by_upload
+
+
+def render_upload_entry_gallery(upload_id: str, details_by_upload: dict) -> tuple[str, str]:
+    """Render query/similar/not-similar image sections for a selected upload."""
+    if not upload_id:
+        return "", "Select an upload to preview images."
+
+    detail = details_by_upload.get(upload_id)
+    if not detail:
+        return "", f"No details found for upload_id `{upload_id}`."
+
+    query_html = _render_admin_image_section(
+        title="Query Image",
+        image_paths=[detail.get("query_image_path", "")],
+        empty_text="No query image available.",
+    )
+    similar_html = _render_admin_image_section(
+        title="Selected Similar Images",
+        image_paths=detail.get("similar_image_paths", []),
+        empty_text="No images marked as similar for this upload.",
+    )
+    not_similar_html = _render_admin_image_section(
+        title="Top Not Similar Image",
+        image_paths=[detail.get("top_not_similar_image_path", "")],
+        empty_text="No not-similar image available for this upload.",
+    )
+
+    html = f"{query_html}{similar_html}{not_similar_html}"
+    info = (
+        f"Showing upload `{upload_id}` | "
+        f"Similar selected: **{len(detail.get('similar_image_paths', []))}**"
+    )
+    return html, info
 
 
 def add_to_corpus(upload_id: str, filepath: str):
@@ -589,6 +901,7 @@ def create_app():
         selected_indices_state = gr.State(value=[])
         gallery_images_state = gr.State(value=[])
         upload_count_state = gr.State(value=0)
+        admin_entry_details_state = gr.State(value={})
 
         # ==================== CONSENT SCREEN ====================
         with gr.Column(visible=True) as consent_screen:
@@ -772,6 +1085,88 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
 
             close_btn = gr.Button("Close", variant="primary", size="lg")
             close_message = gr.Markdown("")
+
+        # ==================== ADMIN ANALYTICS (PASSWORD GATED) ====================
+        with gr.Column(visible=True) as admin_gate_screen:
+            gr.Markdown("## Admin Analytics")
+            gr.Markdown(
+                "Private research panel for live model performance and per-upload results."
+            )
+
+            admin_setup_warning = gr.Markdown(
+                "" if ADMIN_PASSWORD else
+                "⚠️ `DRESSA_ADMIN_PASSWORD` is not set. "
+                "Set it as a Space Secret before using admin analytics."
+            )
+            admin_password_input = gr.Textbox(
+                label="Admin password",
+                type="password",
+                placeholder="Enter admin password",
+            )
+            admin_unlock_btn = gr.Button("Unlock Admin", variant="secondary")
+            admin_unlock_status = gr.Markdown("")
+
+        with gr.Column(visible=False) as admin_panel_screen:
+            with gr.Tabs():
+                with gr.Tab("Model leaderboard"):
+                    leaderboard_summary = gr.Markdown(
+                        "Unlock admin to load leaderboard."
+                    )
+                    leaderboard_refresh_btn = gr.Button(
+                        "Refresh leaderboard", variant="primary"
+                    )
+                    leaderboard_status = gr.Markdown("")
+                    leaderboard_df = gr.Dataframe(
+                        headers=[
+                            "model",
+                            "total_recommendations",
+                            "similar_count",
+                            "hit_rate",
+                            "eligible",
+                        ],
+                        datatype=["str", "number", "number", "number", "str"],
+                        value=[],
+                        interactive=False,
+                        wrap=True,
+                        label="Per-model performance",
+                    )
+
+                with gr.Tab("Live entries (images + tables)"):
+                    with gr.Row():
+                        max_uploads_dropdown = gr.Dropdown(
+                            choices=[20, 50, 100, 200],
+                            value=100,
+                            label="Recent uploads to load",
+                        )
+                        entries_refresh_btn = gr.Button(
+                            "Refresh live entries", variant="primary"
+                        )
+
+                    entries_status = gr.Markdown("")
+                    entries_df = gr.Dataframe(
+                        headers=[
+                            "uploaded_at",
+                            "upload_id",
+                            "user_id",
+                            "query_image_path",
+                            "similar_count",
+                            "not_similar_count",
+                            "top_not_similar_image_path",
+                            "selected_similar_image_paths",
+                        ],
+                        datatype=["str", "str", "str", "str", "number", "number", "str", "str"],
+                        value=[],
+                        interactive=False,
+                        wrap=True,
+                        label="Per-upload live analytics",
+                    )
+                    selected_upload_dropdown = gr.Dropdown(
+                        choices=[],
+                        value=None,
+                        label="Select upload_id for image preview",
+                    )
+                    selected_entry_info = gr.Markdown("")
+                    selected_entry_gallery_html = gr.HTML(value="")
 
         # ==================== Event Handlers ====================
 
@@ -1022,6 +1417,102 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             """Handle close button on debrief screen."""
             return gr.update(value="Thank you for participating. You may close this window.")
 
+        def load_entries_and_preview(max_uploads: int):
+            """Load per-upload analytics and render the first entry preview."""
+            status, table_rows, details_by_upload = load_live_entries(int(max_uploads))
+            upload_ids = list(details_by_upload.keys())
+            if upload_ids:
+                default_upload_id = upload_ids[0]
+                preview_html, preview_info = render_upload_entry_gallery(
+                    default_upload_id, details_by_upload
+                )
+            else:
+                default_upload_id = None
+                preview_html = ""
+                preview_info = "No upload entries to preview."
+
+            return (
+                status,
+                table_rows,
+                details_by_upload,
+                gr.update(choices=upload_ids, value=default_upload_id),
+                preview_html,
+                preview_info,
+            )
+
+        def on_unlock_admin(input_password: str):
+            """Unlock admin panel and auto-load leaderboard + live entries."""
+            if not ADMIN_PASSWORD:
+                return (
+                    "⚠️ `DRESSA_ADMIN_PASSWORD` is not configured in environment secrets.",
+                    gr.update(visible=True),
+                    gr.update(visible=False),
+                    gr.update(value="### Best Model Right Now\nAdmin is locked."),
+                    [],
+                    "Admin secret is not configured.",
+                    "Admin is locked.",
+                    [],
+                    {},
+                    gr.update(choices=[], value=None),
+                    "",
+                    "No entry selected.",
+                )
+
+            if not verify_admin_password(input_password):
+                return (
+                    "❌ Incorrect password.",
+                    gr.update(visible=True),
+                    gr.update(visible=False),
+                    gr.update(value="### Best Model Right Now\nAdmin is locked."),
+                    [],
+                    "Leaderboard not loaded.",
+                    "Entries not loaded.",
+                    [],
+                    {},
+                    gr.update(choices=[], value=None),
+                    "",
+                    "No entry selected.",
+                )
+
+            leaderboard_summary_text, leaderboard_rows, leaderboard_status_text = load_model_leaderboard(
+                min_support=MIN_SUPPORT_FOR_BEST_MODEL
+            )
+            (
+                entries_status_text,
+                entries_rows,
+                details_by_upload,
+                selected_upload_update,
+                preview_html,
+                preview_info,
+            ) = load_entries_and_preview(100)
+
+            return (
+                "✅ Admin unlocked.",
+                gr.update(visible=False),
+                gr.update(visible=True),
+                leaderboard_summary_text,
+                leaderboard_rows,
+                leaderboard_status_text,
+                entries_status_text,
+                entries_rows,
+                details_by_upload,
+                selected_upload_update,
+                preview_html,
+                preview_info,
+            )
+
+        def on_refresh_leaderboard():
+            """Refresh leaderboard tab."""
+            return load_model_leaderboard(min_support=MIN_SUPPORT_FOR_BEST_MODEL)
+
+        def on_refresh_live_entries(max_uploads: int):
+            """Refresh live entries tab."""
+            return load_entries_and_preview(max_uploads)
+
+        def on_select_live_entry(upload_id: str, details_by_upload: dict):
+            """Render selected upload's images in the admin preview section."""
+            return render_upload_entry_gallery(upload_id, details_by_upload)
+
         # ==================== Wire up events ====================
 
         # Consent screen events
@@ -1090,6 +1581,51 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             fn=on_close,
             inputs=[],
             outputs=[close_message]
+        )
+
+        # Admin unlock events
+        admin_unlock_btn.click(
+            fn=on_unlock_admin,
+            inputs=[admin_password_input],
+            outputs=[
+                admin_unlock_status,
+                admin_gate_screen,
+                admin_panel_screen,
+                leaderboard_summary,
+                leaderboard_df,
+                leaderboard_status,
+                entries_status,
+                entries_df,
+                admin_entry_details_state,
+                selected_upload_dropdown,
+                selected_entry_gallery_html,
+                selected_entry_info,
+            ],
+        )
+
+        leaderboard_refresh_btn.click(
+            fn=on_refresh_leaderboard,
+            inputs=[],
+            outputs=[leaderboard_summary, leaderboard_df, leaderboard_status],
+        )
+
+        entries_refresh_btn.click(
+            fn=on_refresh_live_entries,
+            inputs=[max_uploads_dropdown],
+            outputs=[
+                entries_status,
+                entries_df,
+                admin_entry_details_state,
+                selected_upload_dropdown,
+                selected_entry_gallery_html,
+                selected_entry_info,
+            ],
+        )
+
+        selected_upload_dropdown.change(
+            fn=on_select_live_entry,
+            inputs=[selected_upload_dropdown, admin_entry_details_state],
+            outputs=[selected_entry_gallery_html, selected_entry_info],
         )
 
     return app
