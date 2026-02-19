@@ -964,56 +964,48 @@ div[data-testid="progress"] {
     display: none !important;
 }
 
-/* Replace scattered per-component Gradio loaders with one custom global loader */
-[data-testid="status-tracker"] .wrap {
-    display: none !important;
-}
-
-#dressa-global-loader {
+/* Participant-only top loading bar */
+#dressa-top-loader {
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 5px;
     display: none;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 253, 250, 0.56);
-    backdrop-filter: blur(2px);
     z-index: 9999;
     pointer-events: none;
+    background: rgba(212, 107, 59, 0.08);
 }
 
-#dressa-global-loader.active {
-    display: flex;
+#dressa-top-loader.active {
+    display: block;
 }
 
-#dressa-global-loader .loader-shell {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    background: rgba(255, 255, 255, 0.94);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 10px 14px;
-    box-shadow: 0 12px 28px rgba(24, 16, 8, 0.14);
+#dressa-top-loader .top-loader-track {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: linear-gradient(90deg, rgba(212, 107, 59, 0.1), rgba(35, 107, 91, 0.12));
 }
 
-#dressa-global-loader .loader-ring {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: 2px solid rgba(212, 107, 59, 0.25);
-    border-top-color: var(--accent);
-    animation: dressa-loader-spin 0.9s linear infinite;
+#dressa-top-loader .top-loader-bar {
+    position: absolute;
+    top: 0;
+    left: -42%;
+    width: 42%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, var(--accent), var(--accent-2), transparent);
+    animation: dressa-top-loader-slide 1.05s ease-in-out infinite;
+    box-shadow: 0 0 12px rgba(212, 107, 59, 0.35);
 }
 
-#dressa-global-loader .loader-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--ink);
-}
-
-@keyframes dressa-loader-spin {
-    to {
-        transform: rotate(360deg);
+@keyframes dressa-top-loader-slide {
+    0% {
+        left: -42%;
+    }
+    100% {
+        left: 100%;
     }
 }
 
@@ -1175,76 +1167,27 @@ if (!window.__dressaSubmitSyncAttached) {
     window.__dressaSubmitSyncAttached = true;
 }
 
-function ensureGlobalLoader() {
-    let loader = document.getElementById('dressa-global-loader');
-    if (loader) {
-        return loader;
+function getParticipantLoader() {
+    return document.getElementById('dressa-top-loader');
+}
+
+window.__dressaParticipantLoaderPending = 0;
+
+window.__dressa_start_participant_loader = function() {
+    const loader = getParticipantLoader();
+    if (!loader) return;
+    window.__dressaParticipantLoaderPending = Math.max(0, window.__dressaParticipantLoaderPending) + 1;
+    loader.classList.add('active');
+};
+
+window.__dressa_stop_participant_loader = function() {
+    const loader = getParticipantLoader();
+    if (!loader) return;
+    window.__dressaParticipantLoaderPending = Math.max(0, window.__dressaParticipantLoaderPending - 1);
+    if (window.__dressaParticipantLoaderPending === 0) {
+        loader.classList.remove('active');
     }
-
-    loader = document.createElement('div');
-    loader.id = 'dressa-global-loader';
-    loader.innerHTML = `
-        <div class="loader-shell" role="status" aria-live="polite" aria-label="Loading">
-            <span class="loader-ring" aria-hidden="true"></span>
-            <span class="loader-label">Loading...</span>
-        </div>
-    `;
-    document.body.appendChild(loader);
-    return loader;
-}
-
-function trackerIsActive(trackerRoot) {
-    if (!trackerRoot) return false;
-    const wrap = trackerRoot.querySelector(':scope > .wrap');
-    if (!wrap) return false;
-    return !wrap.classList.contains('hide');
-}
-
-let loaderRefreshQueued = false;
-function refreshGlobalLoader() {
-    const loader = ensureGlobalLoader();
-    const trackers = document.querySelectorAll('[data-testid="status-tracker"]');
-    const hasActiveTracker = [...trackers].some(trackerIsActive);
-    loader.classList.toggle('active', hasActiveTracker);
-}
-
-function queueLoaderRefresh() {
-    if (loaderRefreshQueued) return;
-    loaderRefreshQueued = true;
-    requestAnimationFrame(() => {
-        loaderRefreshQueued = false;
-        refreshGlobalLoader();
-    });
-}
-
-function initGlobalLoaderObserver() {
-    if (window.__dressaLoaderObserverAttached) {
-        queueLoaderRefresh();
-        return;
-    }
-    ensureGlobalLoader();
-
-    const observer = new MutationObserver(() => {
-        queueLoaderRefresh();
-    });
-
-    observer.observe(document.body, {
-        subtree: true,
-        childList: true,
-        attributes: true,
-        attributeFilter: ['class']
-    });
-
-    window.__dressaLoaderObserverAttached = true;
-    window.__dressaLoaderObserver = observer;
-    queueLoaderRefresh();
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initGlobalLoaderObserver, { once: true });
-} else {
-    initGlobalLoaderObserver();
-}
+};
 """
 
 def create_app():
@@ -1252,6 +1195,13 @@ def create_app():
 
     with gr.Blocks(title="Dressa - Dress Similarity Study", css=APP_CSS) as app:
         gr.HTML(FONT_LINKS_HTML)
+        gr.HTML("""
+        <div id="dressa-top-loader" aria-hidden="true">
+            <div class="top-loader-track">
+                <div class="top-loader-bar"></div>
+            </div>
+        </div>
+        """)
 
         # State variables
         session_id_state = gr.State(value=None)
@@ -1855,7 +1805,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
         )
 
         # Search events
-        search_btn.click(
+        search_dep = search_btn.click(
             fn=on_search,
             inputs=[upload_image, user_id_state, upload_id_state, upload_count_state],
             outputs=[
@@ -1865,11 +1815,29 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 selection_instructions, selection_count, results_grid_html,
                 selected_indices_input, submit_btn, submit_status,
                 upload_progress, finish_btn
-            ]
+            ],
+            show_progress="hidden",
+            js="() => { window.__dressa_start_participant_loader?.(); }",
+        )
+        search_dep.success(
+            fn=None,
+            inputs=[],
+            outputs=[],
+            show_progress="hidden",
+            queue=False,
+            js="() => { window.__dressa_stop_participant_loader?.(); }",
+        )
+        search_dep.failure(
+            fn=None,
+            inputs=[],
+            outputs=[],
+            show_progress="hidden",
+            queue=False,
+            js="() => { window.__dressa_stop_participant_loader?.(); }",
         )
 
         # Submit events
-        submit_btn.click(
+        submit_dep = submit_btn.click(
             fn=on_submit,
             inputs=[
                 user_id_state, upload_id_state, current_results_state,
@@ -1879,7 +1847,25 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 submit_status, selection_instructions, selection_count, selected_indices_state,
                 selected_indices_input, submit_btn, results_grid_html,
                 progress_text, status_text, upload_image
-            ]
+            ],
+            show_progress="hidden",
+            js="() => { window.syncSelectedIndicesToInput?.(); window.__dressa_start_participant_loader?.(); }",
+        )
+        submit_dep.success(
+            fn=None,
+            inputs=[],
+            outputs=[],
+            show_progress="hidden",
+            queue=False,
+            js="() => { window.__dressa_stop_participant_loader?.(); }",
+        )
+        submit_dep.failure(
+            fn=None,
+            inputs=[],
+            outputs=[],
+            show_progress="hidden",
+            queue=False,
+            js="() => { window.__dressa_stop_participant_loader?.(); }",
         )
 
         # Finish study events
