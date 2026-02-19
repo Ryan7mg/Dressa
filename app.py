@@ -964,6 +964,59 @@ div[data-testid="progress"] {
     display: none !important;
 }
 
+/* Replace scattered per-component Gradio loaders with one custom global loader */
+[data-testid="status-tracker"] .wrap {
+    display: none !important;
+}
+
+#dressa-global-loader {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 253, 250, 0.56);
+    backdrop-filter: blur(2px);
+    z-index: 9999;
+    pointer-events: none;
+}
+
+#dressa-global-loader.active {
+    display: flex;
+}
+
+#dressa-global-loader .loader-shell {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 10px 14px;
+    box-shadow: 0 12px 28px rgba(24, 16, 8, 0.14);
+}
+
+#dressa-global-loader .loader-ring {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid rgba(212, 107, 59, 0.25);
+    border-top-color: var(--accent);
+    animation: dressa-loader-spin 0.9s linear infinite;
+}
+
+#dressa-global-loader .loader-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+@keyframes dressa-loader-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .admin-visual-wrap {
     overflow-x: auto;
     border: 1px solid var(--border);
@@ -1120,6 +1173,77 @@ if (!window.__dressaSubmitSyncAttached) {
         updateSelectionUi(selected);
     }, true);
     window.__dressaSubmitSyncAttached = true;
+}
+
+function ensureGlobalLoader() {
+    let loader = document.getElementById('dressa-global-loader');
+    if (loader) {
+        return loader;
+    }
+
+    loader = document.createElement('div');
+    loader.id = 'dressa-global-loader';
+    loader.innerHTML = `
+        <div class="loader-shell" role="status" aria-live="polite" aria-label="Loading">
+            <span class="loader-ring" aria-hidden="true"></span>
+            <span class="loader-label">Loading...</span>
+        </div>
+    `;
+    document.body.appendChild(loader);
+    return loader;
+}
+
+function trackerIsActive(trackerRoot) {
+    if (!trackerRoot) return false;
+    const wrap = trackerRoot.querySelector(':scope > .wrap');
+    if (!wrap) return false;
+    return !wrap.classList.contains('hide');
+}
+
+let loaderRefreshQueued = false;
+function refreshGlobalLoader() {
+    const loader = ensureGlobalLoader();
+    const trackers = document.querySelectorAll('[data-testid="status-tracker"]');
+    const hasActiveTracker = [...trackers].some(trackerIsActive);
+    loader.classList.toggle('active', hasActiveTracker);
+}
+
+function queueLoaderRefresh() {
+    if (loaderRefreshQueued) return;
+    loaderRefreshQueued = true;
+    requestAnimationFrame(() => {
+        loaderRefreshQueued = false;
+        refreshGlobalLoader();
+    });
+}
+
+function initGlobalLoaderObserver() {
+    if (window.__dressaLoaderObserverAttached) {
+        queueLoaderRefresh();
+        return;
+    }
+    ensureGlobalLoader();
+
+    const observer = new MutationObserver(() => {
+        queueLoaderRefresh();
+    });
+
+    observer.observe(document.body, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['class']
+    });
+
+    window.__dressaLoaderObserverAttached = true;
+    window.__dressaLoaderObserver = observer;
+    queueLoaderRefresh();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGlobalLoaderObserver, { once: true });
+} else {
+    initGlobalLoaderObserver();
 }
 """
 
