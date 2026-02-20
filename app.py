@@ -699,6 +699,8 @@ APP_CSS = """
     --muted: #6f6b65;
     --accent: #d46b3b;
     --accent-2: #236b5b;
+    --accent-soft: #f6aa64;
+    --glass: rgba(255, 255, 255, 0.78);
     --border: #e7ddd1;
     --shadow: 0 16px 44px rgba(24, 16, 8, 0.10);
     --display: 'Fraunces', 'Space Grotesk', 'Helvetica Neue', sans-serif;
@@ -706,7 +708,10 @@ APP_CSS = """
 }
 
 body, .gradio-container {
-    background: var(--bg);
+    background:
+        radial-gradient(circle at 10% -5%, rgba(246, 170, 100, 0.20), transparent 45%),
+        radial-gradient(circle at 95% 10%, rgba(49, 121, 108, 0.13), transparent 40%),
+        var(--bg);
     color: var(--ink);
     font-family: var(--body);
     overflow-x: hidden;
@@ -749,23 +754,35 @@ body, .gradio-container {
 }
 
 #upload-col, #results-col {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    padding: 16px;
-    box-shadow: 0 10px 28px rgba(24, 16, 8, 0.06);
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.92), rgba(254, 249, 244, 0.88));
+    border: 1px solid rgba(235, 219, 205, 0.95);
+    border-radius: 24px;
+    padding: 18px;
+    box-shadow: 0 18px 42px rgba(24, 16, 8, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
     overflow: visible !important;
+    backdrop-filter: blur(3px);
 }
 
 #results-grid-container {
     overflow: visible !important;
+    min-height: 120px;
+}
+
+#upload-helper {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+#main-app-screen {
+    position: relative;
 }
 
 #hero {
-    background: linear-gradient(135deg, #fff8f1, #fff2e8);
+    background: linear-gradient(135deg, #fff9f2, #ffeede);
     border: 1px solid var(--border);
-    border-radius: 22px;
-    box-shadow: var(--shadow);
+    border-radius: 24px;
+    box-shadow: 0 16px 44px rgba(24, 16, 8, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.8);
     padding: 22px 24px;
     margin-bottom: 18px;
 }
@@ -825,11 +842,11 @@ h1, h2, h3 {
 }
 
 #status-text, #progress-text, #submit-status {
-    background: var(--card);
-    border: 1px solid var(--border);
+    background: var(--glass);
+    border: 1px solid rgba(228, 214, 200, 0.9);
     border-radius: 12px;
     padding: 10px 12px;
-    box-shadow: 0 8px 18px rgba(24, 16, 8, 0.05);
+    box-shadow: 0 8px 18px rgba(24, 16, 8, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 #progress-text {
@@ -848,23 +865,41 @@ h1, h2, h3 {
 
 #upload-image .image-preview,
 #upload-image .image-container {
-    border-radius: 16px;
+    border-radius: 18px;
     overflow: hidden;
+    border: 1px solid rgba(232, 220, 207, 0.95);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
 }
 
 #upload-image .image-preview .toolbar,
 #upload-image .image-preview .image-preview-controls,
-#upload-image .image-preview .icon,
-#upload-image .image-preview .buttons,
-#upload-image .image-preview .toolbar button[aria-label="Clear"],
-#upload-image .image-preview .toolbar button[aria-label="Remove"],
-#upload-image .image-preview .toolbar button[aria-label="Fullscreen"],
-#upload-image .image-preview .toolbar button[aria-label="Zoom"],
-#upload-image .image-preview .toolbar button[aria-label="View"],
-#upload-image .image-preview button[aria-label="Clear"],
-#upload-image .image-preview button[aria-label="Remove"],
-#upload-image .image-preview button[aria-label="Fullscreen"] {
+#upload-image .image-preview .buttons {
+    display: flex !important;
+    gap: 8px !important;
+}
+
+#upload-image .image-preview button[aria-label="Fullscreen"],
+#upload-image .image-preview button[aria-label="Zoom"],
+#upload-image .image-preview button[aria-label="View"] {
     display: none !important;
+}
+
+#upload-image .image-preview button[aria-label="Clear"],
+#upload-image .image-preview button[aria-label="Remove"] {
+    display: inline-flex !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
+    background: rgba(20, 22, 24, 0.62) !important;
+    color: #fff !important;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22) !important;
+}
+
+#upload-image .image-preview [role="tab"],
+#upload-image .image-preview [role="button"] {
+    border-radius: 999px !important;
 }
 
 .gr-markdown, .gr-markdown > div {
@@ -876,27 +911,32 @@ h1, h2, h3 {
 }
 
 .results-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 12px;
-    padding: 6px;
+    column-count: 2;
+    column-gap: 12px;
+    padding: 2px;
 }
 
 .result-item {
     position: relative;
-    aspect-ratio: 3/4;
+    display: block;
+    width: 100%;
+    margin: 0 0 12px;
+    break-inside: avoid;
     cursor: pointer;
-    border-radius: 16px;
+    border-radius: 18px;
     overflow: hidden;
-    border: 2px solid transparent;
+    border: 2px solid rgba(233, 225, 216, 0.95);
     transition: border-color 0.2s ease, transform 0.12s ease, box-shadow 0.2s ease;
     background: #f4f1ec;
     padding: 0;
+    box-shadow: 0 11px 28px rgba(24, 16, 8, 0.10);
 }
 
 .result-item img {
     width: 100%;
-    height: 100%;
+    height: auto;
+    min-height: 170px;
+    max-height: 360px;
     object-fit: cover;
     display: block;
 }
@@ -908,36 +948,91 @@ h1, h2, h3 {
 
 .result-item.selected {
     border-color: var(--accent-2);
-    box-shadow: 0 0 0 3px rgba(31, 111, 91, 0.2);
+    box-shadow: 0 0 0 3px rgba(31, 111, 91, 0.22), 0 14px 32px rgba(14, 43, 36, 0.25);
 }
 
-.result-item.selected::after {
-    content: '';
+.result-item .select-chip {
     position: absolute;
     top: 8px;
     right: 8px;
-    width: 32px;
-    height: 32px;
-    background: var(--accent-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E") center/60% no-repeat;
+    width: 34px;
+    height: 34px;
+    background: rgba(24, 37, 35, 0.56);
     border-radius: 50%;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.36);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.result-item .select-chip::before {
+    content: '';
+    width: 9px;
+    height: 9px;
+    border-top: 2px solid #fff;
+    border-right: 2px solid #fff;
+    transform: rotate(45deg) translate(-1px, 1px);
+}
+
+.result-item.selected .select-chip {
+    background: linear-gradient(145deg, #2d8a74, #236b5b);
+    border-color: rgba(255, 255, 255, 0.44);
+}
+
+.result-item.selected .select-chip::before {
+    width: 8px;
+    height: 12px;
+    border-top: none;
+    border-right: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(40deg) translate(-1px, -1px);
 }
 
 .result-item .index-badge {
     position: absolute;
     bottom: 8px;
     left: 8px;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(12, 12, 12, 0.56);
     color: white;
     padding: 4px 10px;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 #submit-btn button,
 #submit-btn {
     width: 100% !important;
+}
+
+#submit-btn {
+    position: sticky;
+    bottom: 18px;
+    z-index: 60;
+    margin-top: 8px;
+}
+
+#submit-btn button {
+    min-height: 52px !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(255, 191, 126, 0.9) !important;
+    background: linear-gradient(160deg, #ffc07a 0%, #ef8f26 52%, #e0801b 100%) !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.01em !important;
+    box-shadow: 0 18px 26px rgba(224, 128, 27, 0.33), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+
+#search-btn button {
+    min-height: 48px !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(255, 191, 126, 0.9) !important;
+    background: linear-gradient(160deg, #ffc588, #ef9a3b 55%, #e28728 100%) !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 12px 24px rgba(224, 128, 27, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.34) !important;
 }
 
 .gr-button.primary {
@@ -961,6 +1056,11 @@ div[data-testid="progress"] {
 }
 
 .progress, .progress-bar, .progress-text, .wrap .progress {
+    display: none !important;
+}
+
+/* Hide participant-side Gradio status trackers/icons; admin remains unchanged */
+#main-app-screen [data-testid="status-tracker"] .wrap {
     display: none !important;
 }
 
@@ -1006,6 +1106,115 @@ div[data-testid="progress"] {
     }
     100% {
         left: 100%;
+    }
+}
+
+#search-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 7000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    background: rgba(16, 16, 17, 0.34);
+    backdrop-filter: blur(3px);
+}
+
+body.dressa-searching #search-overlay {
+    display: flex;
+}
+
+#search-overlay .search-overlay-card {
+    background: linear-gradient(170deg, rgba(255, 255, 255, 0.95), rgba(255, 243, 231, 0.9));
+    border: 1px solid rgba(255, 230, 206, 0.95);
+    border-radius: 20px;
+    padding: 20px 22px;
+    box-shadow: 0 26px 48px rgba(18, 10, 4, 0.2);
+    text-align: center;
+    min-width: 250px;
+}
+
+#search-overlay .spinner {
+    width: 38px;
+    height: 38px;
+    margin: 0 auto 12px;
+    border-radius: 50%;
+    border: 3px solid rgba(212, 107, 59, 0.24);
+    border-top-color: #e68929;
+    animation: spin-loader 0.8s linear infinite;
+}
+
+#search-overlay .search-title {
+    font-family: var(--display);
+    font-size: 21px;
+    margin-bottom: 4px;
+}
+
+#search-overlay .search-copy {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+@keyframes spin-loader {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (min-width: 860px) {
+    .results-grid {
+        column-count: 3;
+    }
+}
+
+@media (min-width: 1200px) {
+    .results-grid {
+        column-count: 4;
+    }
+}
+
+@media (max-width: 980px) {
+    #main-row {
+        flex-direction: column;
+    }
+
+    #upload-col,
+    #results-col {
+        width: 100% !important;
+    }
+}
+
+@media (max-width: 780px) {
+    .gradio-container {
+        padding: 16px 12px 120px;
+    }
+
+    #hero {
+        padding: 18px 14px;
+        border-radius: 20px;
+    }
+
+    #hero .hero-subtitle {
+        font-size: 15px;
+    }
+
+    #hero .hero-steps {
+        grid-template-columns: 1fr;
+    }
+
+    #submit-btn {
+        position: fixed;
+        left: 50%;
+        bottom: 12px;
+        transform: translateX(-50%);
+        width: min(480px, calc(100vw - 20px)) !important;
+        z-index: 6500;
+        margin: 0;
+    }
+
+    #submit-btn button {
+        min-height: 50px !important;
     }
 }
 
@@ -1133,7 +1342,7 @@ function syncSelectedIndicesToInput() {
 function updateSelectionUi(selected) {
     const submitBtn = document.querySelector('#submit-btn button') || document.querySelector('#submit-btn');
     if (submitBtn) {
-        submitBtn.textContent = `Submit ratings (${selected.length} selected)`;
+        submitBtn.textContent = `Submit Similar Selections (${selected.length})`;
     }
 
     const countLabel = document.getElementById('selection-count');
@@ -1163,8 +1372,19 @@ if (!window.__dressaSubmitSyncAttached) {
         if (!submit) return;
         const selected = syncSelectedIndicesToInput();
         updateSelectionUi(selected);
+        window.__dressa_start_participant_loader?.();
     }, true);
     window.__dressaSubmitSyncAttached = true;
+}
+
+if (!window.__dressaSearchLoaderClickAttached) {
+    document.addEventListener('click', function(event) {
+        const search = event.target.closest('#search-btn button, #search-btn');
+        if (!search) return;
+        document.body.classList.add('dressa-searching');
+        window.__dressa_start_participant_loader?.();
+    }, true);
+    window.__dressaSearchLoaderClickAttached = true;
 }
 
 function getParticipantLoader() {
@@ -1186,6 +1406,7 @@ window.__dressa_stop_participant_loader = function() {
     window.__dressaParticipantLoaderPending = Math.max(0, window.__dressaParticipantLoaderPending - 1);
     if (window.__dressaParticipantLoaderPending === 0) {
         loader.classList.remove('active');
+        document.body.classList.remove('dressa-searching');
     }
 };
 """
@@ -1199,6 +1420,13 @@ def create_app():
         <div id="dressa-top-loader" aria-hidden="true">
             <div class="top-loader-track">
                 <div class="top-loader-bar"></div>
+            </div>
+        </div>
+        <div id="search-overlay" aria-hidden="true">
+            <div class="search-overlay-card">
+                <div class="spinner"></div>
+                <div class="search-title">Finding similar dresses</div>
+                <div class="search-copy">We are matching your upload now.</div>
             </div>
         </div>
         """)
@@ -1294,15 +1522,15 @@ University of Glasgow - School of Computing Science
             disagree_message = gr.Markdown("", visible=False)
 
         # ==================== MAIN APP SCREEN ====================
-        with gr.Column(visible=False) as main_app_screen:
+        with gr.Column(visible=False, elem_id="main-app-screen") as main_app_screen:
 
             gr.HTML("""
             <div id="hero">
                 <div class="hero-title">Dressa</div>
-                <div class="hero-subtitle">Upload a dress photo and tap all results that look similar.</div>
+                <div class="hero-subtitle">Upload one dress photo, select all images that look similar, then submit.</div>
                 <div class="hero-steps">
                     <div class="step"><span class="step-num">1</span>Upload a clear dress photo</div>
-                    <div class="step"><span class="step-num">2</span>Tap every similar dress</div>
+                    <div class="step"><span class="step-num">2</span>Select every image that looks similar</div>
                     <div class="step"><span class="step-num">3</span>Submit ratings and continue</div>
                 </div>
             </div>
@@ -1317,25 +1545,29 @@ University of Glasgow - School of Computing Science
                 with gr.Column(scale=1, elem_id="upload-col"):
                     gr.Markdown("### 1. Upload Your Dress")
                     upload_image = gr.Image(
-                        label="Upload a dress photo",
+                        label="Upload or take a photo of a dress",
                         type="numpy",
                         sources=["upload", "webcam"],
                         elem_id="upload-image"
                     )
-                    search_btn = gr.Button("Find Similar Dresses", variant="primary")
-                    status_text = gr.Markdown("", elem_id="status-text")
+                    gr.Markdown(
+                        "Use gallery or camera. If you pick the wrong photo, use the X icon to remove and re-upload.",
+                        elem_id="upload-helper",
+                    )
+                    search_btn = gr.Button("Find Similar Dresses", variant="primary", elem_id="search-btn")
+                    status_text = gr.Markdown("Upload a dress photo to begin.", elem_id="status-text")
 
                     # Finish button (appears after minimum uploads)
                     finish_btn = gr.Button("Finish Study", variant="secondary", visible=False)
 
                 # Right column: Results
                 with gr.Column(scale=2, elem_id="results-col"):
-                    gr.Markdown("### 2. Choose Similar Dresses")
-                    progress_text = gr.Markdown("Upload a photo to begin.", elem_id="progress-text")
+                    gr.Markdown("### 2. Select Similar Dresses")
+                    progress_text = gr.Markdown("Upload a photo, then tap Find Similar Dresses.", elem_id="progress-text")
 
                     # Instructions for selection
                     selection_instructions = gr.Markdown(
-                        "Tap all dresses that look similar to yours. Tap again to deselect. You can submit with zero selected.",
+                        "Select all images you think are similar. Tap again to unselect.",
                         visible=False,
                         elem_id="selection-instructions"
                     )
@@ -1356,7 +1588,7 @@ University of Glasgow - School of Computing Science
 
                     # Submit button
                     submit_btn = gr.Button(
-                        "Submit ratings (0 selected)",
+                        "Submit Similar Selections (0)",
                         variant="primary",
                         size="lg",
                         visible=False,
@@ -1521,6 +1753,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 grid_items.append(f'''
                 <button class="result-item {selected_class}" data-index="{i}" onclick="toggleSelection({i})" aria-pressed="{str(i in selected_indices).lower()}" type="button">
                     <img src="{img_src}" alt="Dress {i+1}">
+                    <span class="select-chip" aria-hidden="true"></span>
                     <span class="index-badge">{i+1}</span>
                 </button>
                 ''')
@@ -1538,8 +1771,8 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             if image is None:
                 return (
                     user_id, upload_id, [], [], [], upload_count,
-                    "Please upload a dress photo first.",
-                    "Upload a photo to begin.",
+                    "Please upload or take a dress photo first.",
+                    "Upload a photo, then tap Find Similar Dresses.",
                     gr.update(visible=False),
                     gr.update(visible=False),
                     "",
@@ -1577,19 +1810,19 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     gr.update(visible=new_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
 
-            progress_msg = f"Found **{len(gallery_images)}** similar dresses. Tap every item that matches."
+            progress_msg = f"Found **{len(gallery_images)}** similar dresses. Select all matching images, then submit."
             selection_text = f"Selected: 0 of {len(gallery_images)}"
             grid_html = generate_results_grid_html(gallery_images, [])
 
             return (
                 user_id, upload_id, filtered_results, [], gallery_images, new_upload_count,
-                "Search complete. Review the results and submit your ratings.",
+                "Search complete. Select similar dresses and submit.",
                 progress_msg,
                 gr.update(visible=True),
                 gr.update(visible=True, value=selection_text),
                 grid_html,
                 "[]",
-                gr.update(visible=True, interactive=True, value="Submit ratings (0 selected)"),
+                gr.update(visible=True, interactive=True, value="Submit Similar Selections (0)"),
                 "",
                 f"Uploads completed: {new_upload_count} of 3-5 recommended",
                 gr.update(visible=new_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
@@ -1601,7 +1834,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             selected_indices = _normalize_selected_indices(selected_indices_json, total)
 
             count = len(selected_indices)
-            btn_text = f"Submit ratings ({count} selected)"
+            btn_text = f"Submit Similar Selections ({count})"
             count_text = f"Selected: {count} of {total}" if total else f"Selected: {count}"
 
             return (
@@ -1638,7 +1871,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     "[]",
                     gr.update(visible=False),
                     "",
-                    "Upload a photo to begin.",
+                    "Upload a photo, then tap Find Similar Dresses.",
                     "Ready for a new upload.",
                     gr.update(value=None)
                 )
@@ -1686,8 +1919,8 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 logger.info("Corpus growth disabled; skipping add_to_corpus")
 
             status = (
-                f"**Thank you!** You marked **{similar_count} of {total_results}** as similar "
-                f"and **{not_similar_count}** as not similar. You can upload another dress now."
+                f"**Submitted.** You selected **{similar_count}** similar photos out of **{total_results}**. "
+                f"({not_similar_count} marked not similar.)"
             )
 
             return (
@@ -1698,7 +1931,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 "[]",
                 gr.update(visible=False),
                 "",
-                "Upload another photo to continue.",
+                "Upload another photo, then tap Find Similar Dresses.",
                 "Ready for another upload.",
                 gr.update(value=None)
             )
@@ -1817,7 +2050,6 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 upload_progress, finish_btn
             ],
             show_progress="hidden",
-            js="() => { window.__dressa_start_participant_loader?.(); }",
         )
         search_dep.success(
             fn=None,
@@ -1849,7 +2081,6 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 progress_text, status_text, upload_image
             ],
             show_progress="hidden",
-            js="() => { window.syncSelectedIndicesToInput?.(); window.__dressa_start_participant_loader?.(); }",
         )
         submit_dep.success(
             fn=None,
