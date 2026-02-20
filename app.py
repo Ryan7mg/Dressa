@@ -685,13 +685,9 @@ def add_to_corpus(upload_id: str, filepath: str):
 # ==================== Gradio Interface ====================
 
 # Global styles for a more polished, responsive UI
-FONT_LINKS_HTML = """
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;700&display=swap" rel="stylesheet">
-"""
-
 APP_CSS = """
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;700&display=swap');
+
 :root {
     --bg: #fefdfb;
     --card: #ffffff;
@@ -722,7 +718,7 @@ body, .gradio-container {
     max-width: none !important;
     margin: 0 !important;
     min-height: 100vh;
-    padding: 28px clamp(16px, 3vw, 40px) 80px;
+    padding: 12px clamp(16px, 3vw, 40px) 80px;
     box-sizing: border-box;
 }
 
@@ -869,6 +865,11 @@ h1, h2, h3 {
     overflow: hidden;
     border: 1px solid rgba(232, 220, 207, 0.95);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+#upload-image .image-preview,
+#upload-image .image-container {
+    padding: 0 !important;
 }
 
 #upload-image .image-preview .toolbar,
@@ -1175,19 +1176,32 @@ body.dressa-searching #search-overlay {
 }
 
 @media (max-width: 980px) {
-    #main-row {
-        flex-direction: column;
+    .gradio-container.fill_width {
+        padding: 5px !important;
     }
 
-    #upload-col,
-    #results-col {
+    .main.fillable.app.fill_width,
+    .main.fillable.svelte-99kmwu.app.fill_width {
+        --size-8: 0px !important;
+        padding: 0 !important;
+    }
+
+    .main.svelte-99kmwu {
+        --size-8: 0px !important;
+        padding: 0 !important;
+    }
+
+    .gradio-container .contain,
+    .gradio-container .container,
+    .gradio-container .wrap {
+        margin: 0 !important;
+        padding: 0 !important;
         width: 100% !important;
     }
-}
 
-@media (max-width: 980px) {
-    .gradio-container {
-        padding: 10px 0 136px;
+    #main-row {
+        flex-direction: column;
+        gap: 10px;
     }
 
     #hero {
@@ -1202,10 +1216,6 @@ body.dressa-searching #search-overlay {
 
     #hero .hero-steps {
         grid-template-columns: 1fr;
-    }
-
-    #main-row {
-        gap: 10px;
     }
 
     #upload-col {
@@ -1460,6 +1470,62 @@ function toggleSelection(index) {
 window.toggleSelection = toggleSelection;
 window.syncSelectedIndicesToInput = syncSelectedIndicesToInput;
 
+function enforceMobileMainPadding() {
+    const main = document.querySelector('div.main.fillable.app.fill_width');
+    if (!main) return;
+
+    if (window.matchMedia('(max-width: 980px)').matches) {
+        main.style.setProperty('--size-8', '0px', 'important');
+        main.style.setProperty('padding', '0px', 'important');
+    } else {
+        main.style.removeProperty('--size-8');
+        main.style.removeProperty('padding');
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', enforceMobileMainPadding, { once: true });
+} else {
+    enforceMobileMainPadding();
+}
+
+if (!window.__dressaMainPaddingWatcherAttached) {
+    window.addEventListener('resize', enforceMobileMainPadding, { passive: true });
+    window.addEventListener('orientationchange', enforceMobileMainPadding, { passive: true });
+    const mainPaddingObserver = new MutationObserver(enforceMobileMainPadding);
+    mainPaddingObserver.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class', 'style']
+    });
+    window.__dressaMainPaddingWatcherAttached = true;
+}
+
+function ensureGlobalOverlayElements() {
+    if (!document.body) return;
+
+    if (!document.getElementById('dressa-top-loader')) {
+        document.body.insertAdjacentHTML(
+            'beforeend',
+            '<div id="dressa-top-loader" aria-hidden="true"><div class="top-loader-track"><div class="top-loader-bar"></div></div></div>'
+        );
+    }
+
+    if (!document.getElementById('search-overlay')) {
+        document.body.insertAdjacentHTML(
+            'beforeend',
+            '<div id="search-overlay" aria-hidden="true"><div class="search-overlay-card"><div class="spinner"></div><div class="search-title">Finding similar dresses</div><div class="search-copy">We are matching your upload now.</div></div></div>'
+        );
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ensureGlobalOverlayElements, { once: true });
+} else {
+    ensureGlobalOverlayElements();
+}
+
 if (!window.__dressaSubmitSyncAttached) {
     document.addEventListener('click', function(event) {
         const submit = event.target.closest('#submit-btn button, #submit-btn');
@@ -1482,6 +1548,7 @@ if (!window.__dressaSearchLoaderClickAttached) {
 }
 
 function getParticipantLoader() {
+    ensureGlobalOverlayElements();
     return document.getElementById('dressa-top-loader');
 }
 
@@ -1508,22 +1575,7 @@ window.__dressa_stop_participant_loader = function() {
 def create_app():
     """Create the Gradio app interface."""
 
-    with gr.Blocks(title="Dressa - Dress Similarity Study", css=APP_CSS) as app:
-        gr.HTML(FONT_LINKS_HTML)
-        gr.HTML("""
-        <div id="dressa-top-loader" aria-hidden="true">
-            <div class="top-loader-track">
-                <div class="top-loader-bar"></div>
-            </div>
-        </div>
-        <div id="search-overlay" aria-hidden="true">
-            <div class="search-overlay-card">
-                <div class="spinner"></div>
-                <div class="search-title">Finding similar dresses</div>
-                <div class="search-copy">We are matching your upload now.</div>
-            </div>
-        </div>
-        """)
+    with gr.Blocks(title="Dressa - Dress Similarity Study", css=APP_CSS, fill_width=True) as app:
 
         # State variables
         session_id_state = gr.State(value=None)
@@ -1535,7 +1587,7 @@ def create_app():
         upload_count_state = gr.State(value=0)
 
         # ==================== CONSENT SCREEN ====================
-        with gr.Column(visible=True) as consent_screen:
+        with gr.Column(visible=True, min_width=0) as consent_screen:
 
             gr.Markdown("""
 # Fashion Similarity Study
@@ -1578,7 +1630,7 @@ University of Glasgow - School of Computing Science
 
             # Two-column layout for remaining info
             with gr.Row():
-                with gr.Column(scale=1):
+                with gr.Column(scale=1, min_width=0):
                     gr.Markdown("""
 **What You'll Do (5 min)**
 1. Upload a dress photo
@@ -1593,7 +1645,7 @@ University of Glasgow - School of Computing Science
 - Used for comparing 4 AI models
                     """)
 
-                with gr.Column(scale=1):
+                with gr.Column(scale=1, min_width=0):
                     gr.Markdown("""
 **Your Rights**
 - Voluntary and anonymous
@@ -1616,7 +1668,7 @@ University of Glasgow - School of Computing Science
             disagree_message = gr.Markdown("", visible=False)
 
         # ==================== MAIN APP SCREEN ====================
-        with gr.Column(visible=False, elem_id="main-app-screen") as main_app_screen:
+        with gr.Column(visible=False, elem_id="main-app-screen", min_width=0) as main_app_screen:
 
             gr.HTML("""
             <div id="hero">
@@ -1636,7 +1688,7 @@ University of Glasgow - School of Computing Science
             # Main layout
             with gr.Row(elem_id="main-row"):
                 # Left column: Upload
-                with gr.Column(scale=1, elem_id="upload-col"):
+                with gr.Column(scale=1, min_width=0, elem_id="upload-col"):
                     gr.Markdown("### 1. Upload Your Dress")
                     upload_image = gr.Image(
                         label="Upload or take a photo of a dress",
@@ -1655,7 +1707,7 @@ University of Glasgow - School of Computing Science
                     finish_btn = gr.Button("Finish Study", variant="secondary", visible=False)
 
                 # Right column: Results
-                with gr.Column(scale=2, elem_id="results-col"):
+                with gr.Column(scale=2, min_width=0, elem_id="results-col"):
                     gr.Markdown("### 2. Select Similar Dresses")
                     progress_text = gr.Markdown("Upload a photo, then tap Find Similar Dresses.", elem_id="progress-text")
 
@@ -1667,9 +1719,6 @@ University of Glasgow - School of Computing Science
                     )
 
                     selection_count = gr.Markdown("", visible=False, elem_id="selection-count")
-
-                    # Custom HTML grid for toggle selection
-                    results_grid_html = gr.HTML(value="", elem_id="results-grid-container")
 
                     # Hidden textbox for selected indices
                     selected_indices_input = gr.Textbox(
@@ -1693,8 +1742,11 @@ University of Glasgow - School of Computing Science
                     # Status message
                     submit_status = gr.Markdown("", elem_id="submit-status")
 
+            with gr.Column(elem_id="results-grid-stage", min_width=0):
+                results_grid_html = gr.HTML(value="", elem_id="results-grid-container")
+
         # ==================== DEBRIEF SCREEN ====================
-        with gr.Column(visible=False) as debrief_screen:
+        with gr.Column(visible=False, min_width=0) as debrief_screen:
 
             gr.Markdown("""
 # Thank You for Participating
