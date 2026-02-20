@@ -1185,12 +1185,13 @@ body.dressa-searching #search-overlay {
     }
 }
 
-@media (max-width: 780px) {
+@media (max-width: 980px) {
     .gradio-container {
-        padding: 16px 12px 120px;
+        padding: 10px 0 136px;
     }
 
     #hero {
+        margin: 0 8px 12px;
         padding: 18px 14px;
         border-radius: 20px;
     }
@@ -1203,18 +1204,111 @@ body.dressa-searching #search-overlay {
         grid-template-columns: 1fr;
     }
 
-    #submit-btn {
-        position: fixed;
+    #main-row {
+        gap: 10px;
+    }
+
+    #upload-col {
+        margin: 0 8px;
+    }
+
+    #results-col {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        border-radius: 0;
+        padding: 0;
+        backdrop-filter: none;
+    }
+
+    #results-col > .gr-markdown,
+    #results-col #progress-text,
+    #results-col #selection-instructions,
+    #results-col #selection-count,
+    #results-col #submit-status {
+        margin-left: 8px;
+        margin-right: 8px;
+    }
+
+    #results-grid-container {
+        position: relative;
         left: 50%;
-        bottom: 12px;
+        width: 100vw;
         transform: translateX(-50%);
-        width: min(480px, calc(100vw - 20px)) !important;
-        z-index: 6500;
-        margin: 0;
+        padding: 0 6px 124px;
+        box-sizing: border-box;
+    }
+
+    .results-grid {
+        column-count: 2;
+        column-gap: 6px;
+        padding: 0;
+    }
+
+    .result-item {
+        border-radius: 16px;
+        margin: 0 0 6px;
+    }
+
+    #submit-btn {
+        position: fixed !important;
+        left: 50% !important;
+        bottom: max(8px, env(safe-area-inset-bottom)) !important;
+        transform: translateX(-50%) !important;
+        width: min(390px, calc(100vw - 16px)) !important;
+        z-index: 6500 !important;
+        margin: 0 !important;
+        display: block !important;
     }
 
     #submit-btn button {
-        min-height: 50px !important;
+        position: relative;
+    }
+
+    button#submit-btn,
+    #submit-btn button {
+        overflow: hidden;
+        min-height: 52px !important;
+        border-radius: 999px !important;
+        border: 1px solid rgba(255, 212, 166, 0.88) !important;
+        background: linear-gradient(
+            150deg,
+            rgba(255, 190, 120, 0.80),
+            rgba(238, 137, 34, 0.86) 55%,
+            rgba(224, 124, 24, 0.82)
+        ) !important;
+        backdrop-filter: blur(10px) saturate(145%) !important;
+        -webkit-backdrop-filter: blur(10px) saturate(145%) !important;
+        box-shadow: 0 20px 30px rgba(224, 128, 27, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.38) !important;
+    }
+
+    button#submit-btn::before,
+    #submit-btn button::before {
+        content: "";
+        position: absolute;
+        inset: 1px;
+        border-radius: inherit;
+        background: linear-gradient(
+            120deg,
+            rgba(255, 255, 255, 0.34),
+            rgba(255, 255, 255, 0.10) 38%,
+            rgba(255, 255, 255, 0.24)
+        );
+        pointer-events: none;
+    }
+
+    button#submit-btn::after,
+    #submit-btn button::after {
+        content: "";
+        position: absolute;
+        left: 12%;
+        right: 12%;
+        bottom: 8px;
+        height: 16px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0));
+        filter: blur(6px);
+        pointer-events: none;
     }
 }
 
