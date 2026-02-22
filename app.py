@@ -1015,7 +1015,18 @@ h1, h2, h3 {
     margin-top: 8px;
 }
 
-#submit-btn button {
+button#agree-btn,
+#agree-btn button,
+button#search-btn,
+#search-btn button,
+button#submit-btn,
+#submit-btn button,
+button#finish-btn,
+#finish-btn button,
+button#close-btn,
+#close-btn button,
+button#disagree-btn,
+#disagree-btn button {
     min-height: 52px !important;
     border-radius: 999px !important;
     border: 1px solid rgba(255, 191, 126, 0.9) !important;
@@ -1026,26 +1037,36 @@ h1, h2, h3 {
     box-shadow: 0 18px 26px rgba(224, 128, 27, 0.33), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
 }
 
-#search-btn button {
-    min-height: 48px !important;
+button#disagree-btn,
+#disagree-btn button {
+    border-color: rgba(205, 205, 205, 0.95) !important;
+    background: linear-gradient(160deg, #efefef 0%, #dfdfdf 52%, #cecece 100%) !important;
+    color: #232323 !important;
+    box-shadow: 0 12px 22px rgba(75, 75, 75, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+.gr-button.primary,
+.gradio-container button.primary {
+    min-height: 52px !important;
     border-radius: 999px !important;
     border: 1px solid rgba(255, 191, 126, 0.9) !important;
-    background: linear-gradient(160deg, #ffc588, #ef9a3b 55%, #e28728 100%) !important;
+    background: linear-gradient(160deg, #ffc07a 0%, #ef8f26 52%, #e0801b 100%) !important;
     color: #fff !important;
     font-weight: 700 !important;
-    box-shadow: 0 12px 24px rgba(224, 128, 27, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.34) !important;
+    letter-spacing: 0.01em !important;
+    box-shadow: 0 18px 26px rgba(224, 128, 27, 0.33), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
 }
 
-.gr-button.primary {
-    background: var(--accent) !important;
-    border: none !important;
-    color: #fff !important;
-}
-
-.gr-button.secondary {
-    background: #fff !important;
-    border: 1px solid var(--border) !important;
-    color: var(--ink) !important;
+.gr-button.secondary,
+.gradio-container button.secondary {
+    min-height: 52px !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(205, 205, 205, 0.95) !important;
+    background: linear-gradient(160deg, #efefef 0%, #dfdfdf 52%, #cecece 100%) !important;
+    color: #232323 !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.01em !important;
+    box-shadow: 0 12px 22px rgba(75, 75, 75, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
 }
 
 .footer, footer {
@@ -1175,7 +1196,7 @@ body.dressa-searching #search-overlay {
     }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 768px) {
     .gradio-container.fill_width {
         padding: 5px !important;
     }
@@ -1199,87 +1220,458 @@ body.dressa-searching #search-overlay {
         width: 100% !important;
     }
 
-    #main-row {
-        flex-direction: column;
+    #consent-info-row {
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    #consent-screen {
+        padding-bottom: 120px !important;
+    }
+
+    #consent-screen h1 {
+        margin-bottom: 6px !important;
+    }
+
+    #consent-screen h2 {
+        margin-top: 10px !important;
+        margin-bottom: 8px !important;
+    }
+
+    #consent-screen .gr-markdown p,
+    #consent-screen .gr-markdown ul {
+        margin-bottom: 8px !important;
+    }
+
+    #consent-actions {
+        position: sticky;
+        bottom: max(12px, env(safe-area-inset-bottom));
+        padding: 6px 8px 0;
         gap: 10px;
+        z-index: 20;
+    }
+}
+
+#upload-progress-mobile {
+    display: none;
+}
+
+#mobile-instructions {
+    display: none;
+}
+
+#mobile-bottom-nav {
+    display: none;
+}
+
+.selection-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #f5a623;
+    color: #fff;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.selection-badge.visible {
+    display: none;
+}
+
+@keyframes dressaGridFade {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --mobile-max-width: 390px;
     }
 
-    #hero {
-        margin: 0 8px 12px;
-        padding: 18px 14px;
-        border-radius: 20px;
+    body,
+    .gradio-container {
+        background:
+            radial-gradient(circle at 84% 18%, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0) 46%),
+            linear-gradient(180deg, #ffd8bb 0%, #f7b18d 48%, #f3a37b 100%) !important;
+        color: #2b2b2b !important;
     }
 
-    #hero .hero-subtitle {
-        font-size: 15px;
+    .gradio-container {
+        padding: 0 0 calc(96px + env(safe-area-inset-bottom)) !important;
     }
 
-    #hero .hero-steps {
-        grid-template-columns: 1fr;
+    .gradio-container .contain,
+    .gradio-container .container,
+    .gradio-container .wrap,
+    .gradio-container .gr-row,
+    .gradio-container .gr-column {
+        overflow-x: clip !important;
+    }
+
+    #hero,
+    #upload-progress,
+    #upload-col h3,
+    #upload-helper,
+    #status-text,
+    #results-col h3,
+    #progress-text,
+    #selection-instructions,
+    #selection-count,
+    #submit-status,
+    #admin-gate-screen,
+    #admin-panel-screen {
+        display: none !important;
+    }
+
+    #main-row {
+        flex-direction: column !important;
+        gap: 8px !important;
+        align-items: stretch !important;
     }
 
     #upload-col {
-        margin: 0 8px;
+        position: sticky !important;
+        top: max(8px, env(safe-area-inset-top)) !important;
+        z-index: 7200 !important;
+        margin: 8px auto 10px !important;
+        width: min(352px, calc(100vw - 24px)) !important;
+        max-width: 352px !important;
+        left: auto !important;
+        right: auto !important;
+        transform: none !important;
+        box-sizing: border-box;
+        background:
+            radial-gradient(circle at 20% 6%, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0) 52%),
+            linear-gradient(150deg, rgba(255, 243, 231, 0.78), rgba(248, 193, 149, 0.66));
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 22px;
+        padding: 12px;
+        box-shadow: 0 12px 28px rgba(88, 47, 25, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.58);
+        backdrop-filter: blur(14px) saturate(135%);
+        -webkit-backdrop-filter: blur(14px) saturate(135%);
+        display: grid;
+        grid-template-columns: 120px minmax(0, 1fr);
+        grid-template-rows: auto auto auto;
+        column-gap: 10px;
+        row-gap: 8px;
+        align-items: start;
+    }
+
+    #upload-image {
+        grid-column: 1;
+        grid-row: 1 / span 3;
+        width: 120px;
+        min-width: 120px;
+    }
+
+    #upload-image .image-container {
+        width: 96px !important;
+        height: 96px !important;
+        margin: 0 auto !important;
+        border-radius: 22px !important;
+        background: linear-gradient(160deg, rgba(234, 234, 234, 0.86), rgba(209, 209, 209, 0.76)) !important;
+        border: 1px solid rgba(246, 246, 246, 0.9) !important;
+        box-shadow: 0 10px 18px rgba(88, 47, 25, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+        overflow: hidden;
+        backdrop-filter: blur(10px) saturate(130%);
+        -webkit-backdrop-filter: blur(10px) saturate(130%);
+        color: transparent !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 0 !important;
+        line-height: 0 !important;
+    }
+
+    #upload-image .image-preview {
+        width: 120px !important;
+        height: 159px !important;
+        margin: 0 !important;
+        border-radius: 22px !important;
+        background: linear-gradient(160deg, rgba(238, 238, 238, 0.86), rgba(217, 217, 217, 0.78)) !important;
+        border: 1px solid rgba(246, 246, 246, 0.9) !important;
+        box-shadow: 0 12px 24px rgba(88, 47, 25, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+        overflow: hidden;
+        position: relative !important;
+    }
+
+    #upload-image label,
+    #upload-image .label {
+        display: none !important;
+    }
+
+    #upload-image .image-container [class*="text"],
+    #upload-image .image-container [class*="label"],
+    #upload-image .image-container p,
+    #upload-image .image-container span {
+        display: none !important;
+    }
+
+    #upload-image .image-container p,
+    #upload-image .image-container span {
+        color: transparent !important;
+    }
+
+    #upload-image .image-container svg {
+        width: 38px !important;
+        height: 38px !important;
+        color: rgba(96, 79, 66, 0.9) !important;
+    }
+
+    #upload-image .image-preview .toolbar,
+    #upload-image .image-preview .image-preview-controls,
+    #upload-image .image-preview .buttons {
+        position: absolute !important;
+        top: 6px !important;
+        right: 6px !important;
+        z-index: 4 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        gap: 0 !important;
+    }
+
+    #upload-image .image-preview button[aria-label="Fullscreen"],
+    #upload-image .image-preview button[aria-label="Zoom"],
+    #upload-image .image-preview button[aria-label="View"] {
+        display: none !important;
+    }
+
+    #upload-image .image-preview img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+    }
+
+    #upload-image .image-preview button[aria-label="Clear"],
+    #upload-image .image-preview button[aria-label="Remove"] {
+        width: 26px !important;
+        height: 26px !important;
+        min-width: 26px !important;
+        border-radius: 999px !important;
+        background: rgba(18, 18, 19, 0.74) !important;
+        border: 1px solid rgba(255, 255, 255, 0.55) !important;
+        color: #fff !important;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.26) !important;
+        position: relative !important;
+    }
+
+    #upload-image [role="tablist"] {
+        display: none !important;
+    }
+
+    #mobile-instructions {
+        grid-column: 2;
+        grid-row: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    #mobile-instructions .mobile-step {
+        background: rgba(255, 255, 255, 0.74);
+        border: 1px solid rgba(255, 255, 255, 0.72);
+        border-radius: 22px;
+        min-height: 32px;
+        padding: 0 11px;
+        box-shadow: 0 8px 18px rgba(92, 48, 25, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 12px;
+        line-height: 1.15;
+        color: #2b2b2b;
+    }
+
+    #mobile-instructions .mobile-step-num {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: linear-gradient(155deg, #ffac4e, #f17f21);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 10px;
+        box-shadow: 0 4px 10px rgba(179, 93, 25, 0.24);
+    }
+
+    #search-btn {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        width: 100%;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+    }
+
+    #search-btn button {
+        width: auto !important;
+        min-width: 164px !important;
+        max-width: calc(100vw - 24px) !important;
+        min-height: 52px !important;
+        border-radius: 999px !important;
+        border: 1px solid rgba(255, 212, 166, 0.88) !important;
+        padding: 0 30px !important;
+        background: linear-gradient(
+            150deg,
+            rgba(255, 190, 120, 0.80),
+            rgba(238, 137, 34, 0.86) 55%,
+            rgba(224, 124, 24, 0.82)
+        ) !important;
+        color: #fff !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.01em !important;
+        box-shadow: 0 20px 30px rgba(224, 128, 27, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.38) !important;
+        backdrop-filter: blur(10px) saturate(145%) !important;
+        -webkit-backdrop-filter: blur(10px) saturate(145%) !important;
+        position: relative;
+        overflow: hidden;
+    }
+
+    #search-btn button::before {
+        content: "";
+        position: absolute;
+        inset: 1px;
+        border-radius: inherit;
+        background: linear-gradient(
+            120deg,
+            rgba(255, 255, 255, 0.34),
+            rgba(255, 255, 255, 0.10) 38%,
+            rgba(255, 255, 255, 0.24)
+        );
+        pointer-events: none;
+    }
+
+    #search-btn button::after {
+        content: "";
+        position: absolute;
+        left: 12%;
+        right: 12%;
+        bottom: 8px;
+        height: 16px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0));
+        filter: blur(6px);
+        pointer-events: none;
+    }
+
+    #upload-progress-mobile {
+        grid-column: 2;
+        grid-row: 2;
+        margin: 2px 2px 0 2px !important;
+        padding: 0;
+        border: none !important;
+        background: transparent !important;
+        font-size: 12px;
+        color: rgba(56, 34, 19, 0.86);
+        font-weight: 600;
+        line-height: 1.3;
     }
 
     #results-col {
-        background: transparent;
-        border: none;
-        box-shadow: none;
-        border-radius: 0;
-        padding: 0;
-        backdrop-filter: none;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 auto !important;
+        width: min(var(--mobile-max-width), calc(100vw - 8px)) !important;
+        max-width: var(--mobile-max-width);
+        position: relative !important;
+        overflow: visible !important;
     }
 
-    #results-col > .gr-markdown,
-    #results-col #progress-text,
-    #results-col #selection-instructions,
-    #results-col #selection-count,
-    #results-col #submit-status {
-        margin-left: 8px;
-        margin-right: 8px;
+    #results-grid-stage {
+        width: 100%;
     }
 
     #results-grid-container {
-        position: relative;
-        left: 50%;
-        width: 100vw;
-        transform: translateX(-50%);
-        padding: 0 6px 124px;
+        position: static !important;
+        left: auto !important;
+        transform: none !important;
+        width: 100% !important;
+        margin: 0 !important;
         box-sizing: border-box;
+        padding: 8px 6px calc(146px + env(safe-area-inset-bottom));
     }
 
     .results-grid {
-        column-count: 2;
-        column-gap: 6px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
         padding: 0;
+        column-count: unset;
+        animation: dressaGridFade 0.35s ease;
     }
 
     .result-item {
-        border-radius: 16px;
-        margin: 0 0 6px;
+        border: none !important;
+        border-radius: 22px !important;
+        box-shadow: 0 8px 20px rgba(97, 51, 29, 0.16) !important;
+        background: #fff !important;
+        margin: 0 !important;
+    }
+
+    .result-item.selected {
+        box-shadow: 0 0 0 2px rgba(246, 150, 47, 0.68), 0 10px 22px rgba(96, 51, 29, 0.2) !important;
+    }
+
+    .result-item .select-chip,
+    .result-item .index-badge {
+        display: none !important;
+    }
+
+    .selection-badge {
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        background: linear-gradient(155deg, #ffb14f, #f07f21);
+        box-shadow: 0 5px 12px rgba(150, 82, 25, 0.35);
+        font-size: 12px;
+    }
+
+    .selection-badge.visible {
+        display: flex;
     }
 
     #submit-btn {
-        position: fixed !important;
-        left: 50% !important;
-        bottom: max(8px, env(safe-area-inset-bottom)) !important;
-        transform: translateX(-50%) !important;
-        width: min(390px, calc(100vw - 16px)) !important;
-        z-index: 6500 !important;
-        margin: 0 !important;
-        display: block !important;
-    }
-
-    #submit-btn button {
-        position: relative;
+        position: static !important;
+        width: 100% !important;
+        margin: 0 auto !important;
+        text-align: center !important;
     }
 
     button#submit-btn,
-    #submit-btn button {
+    #submit-btn button,
+    #submit-btn > button {
+        position: relative !important;
         overflow: hidden;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto !important;
+        white-space: nowrap;
         min-height: 52px !important;
         border-radius: 999px !important;
+        width: auto !important;
+        min-width: 164px !important;
+        max-width: calc(100vw - 24px) !important;
+        padding: 0 30px !important;
         border: 1px solid rgba(255, 212, 166, 0.88) !important;
         background: linear-gradient(
             150deg,
@@ -1319,6 +1711,49 @@ body.dressa-searching #search-overlay {
         background: linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0));
         filter: blur(6px);
         pointer-events: none;
+    }
+
+    #mobile-bottom-nav,
+    button#mobile-bottom-nav {
+        display: block !important;
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 0;
+        width: 100vw;
+        padding: 0 0 env(safe-area-inset-bottom);
+        min-height: 52px;
+        border-radius: 22px 22px 0 0 !important;
+        background: rgba(255, 255, 255, 0.95) !important;
+        border: none !important;
+        box-shadow: 0 -8px 18px rgba(95, 54, 28, 0.16) !important;
+        color: #e46339 !important;
+        font-weight: 700 !important;
+        font-size: 18px !important;
+        text-align: center !important;
+        z-index: 6400;
+    }
+
+    #mobile-bottom-nav button {
+        display: block !important;
+        width: 100% !important;
+        min-height: 52px !important;
+        border-radius: 22px 22px 0 0 !important;
+        background: transparent !important;
+        color: inherit !important;
+        font-weight: inherit !important;
+        font-size: inherit !important;
+        border: none !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    #mobile-bottom-nav button::before,
+    #mobile-bottom-nav button::after,
+    button#mobile-bottom-nav::before,
+    button#mobile-bottom-nav::after {
+        display: none !important;
     }
 }
 
@@ -1415,6 +1850,102 @@ body.dressa-searching #search-overlay {
 
 # JavaScript for toggle selection functionality (passed to launch() for Gradio 6.0+)
 TOGGLE_JS = """
+window.__dressaSelectionOrder = window.__dressaSelectionOrder || [];
+
+function updateSelectionBadges() {
+    const order = window.__dressaSelectionOrder || [];
+    document.querySelectorAll('.result-item').forEach(item => {
+        const badge = item.querySelector('.selection-badge');
+        if (!badge) return;
+        const idx = Number.parseInt(item.dataset.index, 10);
+        const position = order.indexOf(idx);
+        if (position === -1) {
+            badge.textContent = '';
+            badge.classList.remove('visible');
+        } else {
+            badge.textContent = String(position + 1);
+            badge.classList.add('visible');
+        }
+    });
+}
+
+function resetSelectionOrder() {
+    window.__dressaSelectionOrder = [];
+    updateSelectionBadges();
+}
+
+window.__dressa_reset_selection_order = resetSelectionOrder;
+
+function dockMobileSubmitButton() {
+    const submitHost = document.getElementById('submit-btn');
+    if (!submitHost) return;
+
+    const submitBtn = submitHost.matches('button')
+        ? submitHost
+        : (submitHost.querySelector('button') || submitHost);
+    if (!submitBtn) return;
+
+    if (window.matchMedia('(max-width: 768px)').matches) {
+        if (submitBtn.dataset.mobileDocked !== '1') {
+            const dockBottom = 'calc(62px + env(safe-area-inset-bottom))';
+            submitBtn.style.setProperty('position', 'fixed', 'important');
+            submitBtn.style.setProperty('top', 'auto', 'important');
+            submitBtn.style.setProperty('bottom', dockBottom, 'important');
+            submitBtn.style.setProperty('left', '50%', 'important');
+            submitBtn.style.setProperty('right', 'auto', 'important');
+            submitBtn.style.setProperty('transform', 'translateX(-50%)', 'important');
+            submitBtn.style.setProperty('z-index', '6501', 'important');
+            submitBtn.style.setProperty('pointer-events', 'auto', 'important');
+            submitBtn.dataset.mobileDocked = '1';
+        }
+    } else {
+        if (submitBtn.dataset.mobileDocked === '1') {
+            submitBtn.style.removeProperty('position');
+            submitBtn.style.removeProperty('top');
+            submitBtn.style.removeProperty('bottom');
+            submitBtn.style.removeProperty('left');
+            submitBtn.style.removeProperty('right');
+            submitBtn.style.removeProperty('transform');
+            submitBtn.style.removeProperty('z-index');
+            submitBtn.style.removeProperty('pointer-events');
+            delete submitBtn.dataset.mobileDocked;
+        }
+    }
+}
+
+window.__dressa_dock_mobile_submit = dockMobileSubmitButton;
+
+function syncMobileLabels() {
+    const resultCount = document.querySelectorAll('.result-item').length;
+    const submitHost = document.getElementById('submit-btn');
+    if (submitHost) {
+        if (resultCount === 0) {
+            submitHost.style.setProperty('display', 'none', 'important');
+        } else {
+            submitHost.style.removeProperty('display');
+        }
+    }
+
+    if (!window.matchMedia('(max-width: 768px)').matches) {
+        dockMobileSubmitButton();
+        return;
+    }
+    const searchBtn = document.querySelector('#search-btn button') || document.querySelector('#search-btn');
+    if (searchBtn) {
+        searchBtn.textContent = 'Search';
+    }
+    const submitBtn = document.querySelector('#submit-btn button') || document.querySelector('#submit-btn');
+    if (submitBtn) {
+        const selectedCount = getSelectedIndices().length;
+        submitBtn.textContent = `Submit (${selectedCount})`;
+        submitBtn.disabled = selectedCount === 0 || resultCount === 0;
+        submitBtn.setAttribute('aria-disabled', String(submitBtn.disabled));
+    }
+    dockMobileSubmitButton();
+}
+
+window.__dressa_sync_mobile_labels = syncMobileLabels;
+
 function getSelectedIndices() {
     return [...document.querySelectorAll('.result-item.selected')]
         .map(el => Number.parseInt(el.dataset.index, 10))
@@ -1444,10 +1975,27 @@ function syncSelectedIndicesToInput() {
 }
 
 function updateSelectionUi(selected) {
+    const resultCount = document.querySelectorAll('.result-item').length;
+    const submitHost = document.getElementById('submit-btn');
+    if (submitHost) {
+        if (resultCount === 0) {
+            submitHost.style.setProperty('display', 'none', 'important');
+        } else {
+            submitHost.style.removeProperty('display');
+        }
+    }
+
     const submitBtn = document.querySelector('#submit-btn button') || document.querySelector('#submit-btn');
     if (submitBtn) {
-        submitBtn.textContent = `Submit Similar Selections (${selected.length})`;
+        if (window.matchMedia('(max-width: 768px)').matches) {
+            submitBtn.textContent = `Submit (${selected.length})`;
+        } else {
+            submitBtn.textContent = `Submit Similar Selections (${selected.length})`;
+        }
+        submitBtn.disabled = selected.length === 0 || resultCount === 0;
+        submitBtn.setAttribute('aria-disabled', String(submitBtn.disabled));
     }
+    dockMobileSubmitButton();
 
     const countLabel = document.getElementById('selection-count');
     if (countLabel) {
@@ -1459,10 +2007,20 @@ function updateSelectionUi(selected) {
 function toggleSelection(index) {
     const item = document.querySelector(`[data-index="${index}"]`);
     if (!item) return;
-    item.classList.toggle('selected');
-    item.setAttribute('aria-pressed', item.classList.contains('selected'));
+    const isSelected = item.classList.toggle('selected');
+    item.setAttribute('aria-pressed', isSelected);
+
+    const order = window.__dressaSelectionOrder || [];
+    const existingIndex = order.indexOf(index);
+    if (isSelected && existingIndex === -1) {
+        order.push(index);
+    } else if (!isSelected && existingIndex !== -1) {
+        order.splice(existingIndex, 1);
+    }
+    window.__dressaSelectionOrder = order;
 
     const selected = syncSelectedIndicesToInput();
+    updateSelectionBadges();
     updateSelectionUi(selected);
     console.log('Selection updated:', selected);
 }
@@ -1470,11 +2028,26 @@ function toggleSelection(index) {
 window.toggleSelection = toggleSelection;
 window.syncSelectedIndicesToInput = syncSelectedIndicesToInput;
 
+function attachResultsObserver() {
+    if (window.__dressaResultsObserverAttached) return;
+    const container = document.getElementById('results-grid-container');
+    if (!container) {
+        setTimeout(attachResultsObserver, 400);
+        return;
+    }
+    const observer = new MutationObserver(() => {
+        window.__dressa_reset_selection_order?.();
+        syncMobileLabels();
+    });
+    observer.observe(container, { childList: true, subtree: true });
+    window.__dressaResultsObserverAttached = true;
+}
+
 function enforceMobileMainPadding() {
     const main = document.querySelector('div.main.fillable.app.fill_width');
     if (!main) return;
 
-    if (window.matchMedia('(max-width: 980px)').matches) {
+    if (window.matchMedia('(max-width: 768px)').matches) {
         main.style.setProperty('--size-8', '0px', 'important');
         main.style.setProperty('padding', '0px', 'important');
     } else {
@@ -1489,10 +2062,26 @@ if (document.readyState === 'loading') {
     enforceMobileMainPadding();
 }
 
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachResultsObserver, { once: true });
+    document.addEventListener('DOMContentLoaded', syncMobileLabels, { once: true });
+    document.addEventListener('DOMContentLoaded', dockMobileSubmitButton, { once: true });
+} else {
+    attachResultsObserver();
+    syncMobileLabels();
+    dockMobileSubmitButton();
+}
+
 if (!window.__dressaMainPaddingWatcherAttached) {
     window.addEventListener('resize', enforceMobileMainPadding, { passive: true });
     window.addEventListener('orientationchange', enforceMobileMainPadding, { passive: true });
-    const mainPaddingObserver = new MutationObserver(enforceMobileMainPadding);
+    window.addEventListener('resize', syncMobileLabels, { passive: true });
+    window.addEventListener('orientationchange', syncMobileLabels, { passive: true });
+    window.addEventListener('resize', dockMobileSubmitButton, { passive: true });
+    window.addEventListener('orientationchange', dockMobileSubmitButton, { passive: true });
+    const mainPaddingObserver = new MutationObserver(() => {
+        enforceMobileMainPadding();
+    });
     mainPaddingObserver.observe(document.documentElement, {
         childList: true,
         subtree: true,
@@ -1553,12 +2142,20 @@ function getParticipantLoader() {
 }
 
 window.__dressaParticipantLoaderPending = 0;
+window.__dressaParticipantLoaderTimer = null;
 
 window.__dressa_start_participant_loader = function() {
     const loader = getParticipantLoader();
     if (!loader) return;
-    window.__dressaParticipantLoaderPending = Math.max(0, window.__dressaParticipantLoaderPending) + 1;
+    window.__dressaParticipantLoaderPending = 1;
     loader.classList.add('active');
+    document.body.classList.add('dressa-searching');
+    if (window.__dressaParticipantLoaderTimer) {
+        clearTimeout(window.__dressaParticipantLoaderTimer);
+    }
+    window.__dressaParticipantLoaderTimer = window.setTimeout(() => {
+        window.__dressa_clear_participant_loader?.();
+    }, 15000);
 };
 
 window.__dressa_stop_participant_loader = function() {
@@ -1568,6 +2165,22 @@ window.__dressa_stop_participant_loader = function() {
     if (window.__dressaParticipantLoaderPending === 0) {
         loader.classList.remove('active');
         document.body.classList.remove('dressa-searching');
+        if (window.__dressaParticipantLoaderTimer) {
+            clearTimeout(window.__dressaParticipantLoaderTimer);
+            window.__dressaParticipantLoaderTimer = null;
+        }
+    }
+};
+
+window.__dressa_clear_participant_loader = function() {
+    const loader = getParticipantLoader();
+    if (!loader) return;
+    window.__dressaParticipantLoaderPending = 0;
+    loader.classList.remove('active');
+    document.body.classList.remove('dressa-searching');
+    if (window.__dressaParticipantLoaderTimer) {
+        clearTimeout(window.__dressaParticipantLoaderTimer);
+        window.__dressaParticipantLoaderTimer = null;
     }
 };
 """
@@ -1587,7 +2200,7 @@ def create_app():
         upload_count_state = gr.State(value=0)
 
         # ==================== CONSENT SCREEN ====================
-        with gr.Column(visible=True, min_width=0) as consent_screen:
+        with gr.Column(visible=True, min_width=0, elem_id="consent-screen") as consent_screen:
 
             gr.Markdown("""
 # Fashion Similarity Study
@@ -1629,7 +2242,7 @@ University of Glasgow - School of Computing Science
             """)
 
             # Two-column layout for remaining info
-            with gr.Row():
+            with gr.Row(elem_id="consent-info-row"):
                 with gr.Column(scale=1, min_width=0):
                     gr.Markdown("""
 **What You'll Do (5 min)**
@@ -1661,9 +2274,9 @@ University of Glasgow - School of Computing Science
 **Questions?** 2786968m@student.gla.ac.uk
                     """)
 
-            with gr.Row():
-                agree_btn = gr.Button("I Agree and Start", variant="primary", size="lg")
-                disagree_btn = gr.Button("I Do Not Agree", variant="secondary", size="lg")
+            with gr.Column(elem_id="consent-actions"):
+                agree_btn = gr.Button("I Agree and Start", variant="primary", size="lg", elem_id="agree-btn")
+                disagree_btn = gr.Button("I Do Not Agree", variant="secondary", size="lg", elem_id="disagree-btn")
 
             disagree_message = gr.Markdown("", visible=False)
 
@@ -1691,20 +2304,29 @@ University of Glasgow - School of Computing Science
                 with gr.Column(scale=1, min_width=0, elem_id="upload-col"):
                     gr.Markdown("### 1. Upload Your Dress")
                     upload_image = gr.Image(
-                        label="Upload or take a photo of a dress",
+                        label="Upload a dress photo",
                         type="numpy",
-                        sources=["upload", "webcam"],
+                        sources=["upload"],
                         elem_id="upload-image"
                     )
+                    gr.HTML("""
+                        <div class="mobile-step"><span class="mobile-step-num">1</span><span>Upload a clear dress photo</span></div>
+                        <div class="mobile-step"><span class="mobile-step-num">2</span><span>Select similar dresses</span></div>
+                        <div class="mobile-step"><span class="mobile-step-num">3</span><span>Submit and Continue</span></div>
+                    """, elem_id="mobile-instructions")
                     gr.Markdown(
                         "Use gallery or camera. If you pick the wrong photo, use the X icon to remove and re-upload.",
                         elem_id="upload-helper",
                     )
                     search_btn = gr.Button("Find Similar Dresses", variant="primary", elem_id="search-btn")
+                    upload_progress_mobile = gr.Markdown(
+                        "Uploads completed: 0 of 3-5 recommended",
+                        elem_id="upload-progress-mobile"
+                    )
                     status_text = gr.Markdown("Upload a dress photo to begin.", elem_id="status-text")
 
                     # Finish button (appears after minimum uploads)
-                    finish_btn = gr.Button("Finish Study", variant="secondary", visible=False)
+                    finish_btn = gr.Button("Finish Study", variant="secondary", visible=False, elem_id="finish-btn")
 
                 # Right column: Results
                 with gr.Column(scale=2, min_width=0, elem_id="results-col"):
@@ -1729,21 +2351,23 @@ University of Glasgow - School of Computing Science
                         label="",
                     )
 
-                    # Submit button
-                    submit_btn = gr.Button(
-                        "Submit Similar Selections (0)",
-                        variant="primary",
-                        size="lg",
-                        visible=False,
-                        interactive=True,
-                        elem_id="submit-btn"
-                    )
-
                     # Status message
                     submit_status = gr.Markdown("", elem_id="submit-status")
 
-            with gr.Column(elem_id="results-grid-stage", min_width=0):
-                results_grid_html = gr.HTML(value="", elem_id="results-grid-container")
+                    with gr.Column(elem_id="results-grid-stage", min_width=0):
+                        results_grid_html = gr.HTML(value="", elem_id="results-grid-container")
+
+            # Submit button (outside results column so it can overlay results area)
+            submit_btn = gr.Button(
+                "Submit Similar Selections (0)",
+                variant="primary",
+                size="lg",
+                visible=False,
+                interactive=True,
+                elem_id="submit-btn"
+            )
+
+            mobile_bottom_nav = gr.Button("Dressa", elem_id="mobile-bottom-nav")
 
         # ==================== DEBRIEF SCREEN ====================
         with gr.Column(visible=False, min_width=0) as debrief_screen:
@@ -1772,11 +2396,11 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
 **Supervisor:** craig.macdonald@glasgow.ac.uk
             """)
 
-            close_btn = gr.Button("Close", variant="primary", size="lg")
+            close_btn = gr.Button("Close", variant="primary", size="lg", elem_id="close-btn")
             close_message = gr.Markdown("")
 
         # ==================== ADMIN ANALYTICS (PASSWORD GATED) ====================
-        with gr.Column(visible=True) as admin_gate_screen:
+        with gr.Column(visible=True, elem_id="admin-gate-screen") as admin_gate_screen:
             gr.Markdown("## Admin Analytics")
             gr.Markdown(
                 "Private research panel for live model performance and per-upload results."
@@ -1795,7 +2419,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             admin_unlock_btn = gr.Button("Unlock Admin", variant="secondary")
             admin_unlock_status = gr.Markdown("")
 
-        with gr.Column(visible=False) as admin_panel_screen:
+        with gr.Column(visible=False, elem_id="admin-panel-screen") as admin_panel_screen:
             with gr.Tabs():
                 with gr.Tab("Model leaderboard"):
                     leaderboard_summary = gr.Markdown(
@@ -1877,6 +2501,34 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 visible=True
             )
 
+        def on_back_to_terms():
+            """Return to consent screen and reset participant state."""
+            reset_progress = "Uploads completed: 0 of 3-5 recommended"
+            return (
+                gr.update(visible=True),   # Show consent screen
+                gr.update(visible=False),  # Hide main app
+                gr.update(visible=False),  # Hide debrief
+                None,  # session_id_state
+                None,  # user_id_state
+                None,  # upload_id_state
+                [],    # current_results_state
+                [],    # selected_indices_state
+                [],    # gallery_images_state
+                0,     # upload_count_state
+                gr.update(value=None),  # upload_image
+                gr.update(value="Upload a dress photo to begin."),  # status_text
+                gr.update(value="Upload a photo, then tap Find Similar Dresses."),  # progress_text
+                gr.update(visible=False),  # selection_instructions
+                gr.update(visible=False, value=""),  # selection_count
+                gr.update(value="[]"),  # selected_indices_input
+                gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),  # submit_btn
+                gr.update(value=""),  # submit_status
+                gr.update(value=""),  # results_grid_html
+                gr.update(value=reset_progress),  # upload_progress
+                gr.update(value=reset_progress),  # upload_progress_mobile
+                gr.update(visible=False),  # finish_btn
+            )
+
         def generate_results_grid_html(gallery_images: list, selected_indices: list) -> str:
             """Generate HTML for the results grid with toggle selection."""
             if not gallery_images:
@@ -1900,6 +2552,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 <button class="result-item {selected_class}" data-index="{i}" onclick="toggleSelection({i})" aria-pressed="{str(i in selected_indices).lower()}" type="button">
                     <img src="{img_src}" alt="Dress {i+1}">
                     <span class="select-chip" aria-hidden="true"></span>
+                    <span class="selection-badge" aria-hidden="true"></span>
                     <span class="index-badge">{i+1}</span>
                 </button>
                 ''')
@@ -1923,8 +2576,9 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     gr.update(visible=False),
                     "",
                     "[]",
-                    gr.update(visible=False, interactive=False),
+                    gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
                     "",
+                    f"Uploads completed: {upload_count} of 3-5 recommended",
                     f"Uploads completed: {upload_count} of 3-5 recommended",
                     gr.update(visible=upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
@@ -1950,8 +2604,9 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     gr.update(visible=False),
                     "",
                     "[]",
-                    gr.update(visible=False, interactive=False),
+                    gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
                     "",
+                    f"Uploads completed: {new_upload_count} of 3-5 recommended",
                     f"Uploads completed: {new_upload_count} of 3-5 recommended",
                     gr.update(visible=new_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
@@ -1968,8 +2623,9 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 gr.update(visible=True, value=selection_text),
                 grid_html,
                 "[]",
-                gr.update(visible=True, interactive=True, value="Submit Similar Selections (0)"),
+                gr.update(visible=True, interactive=False, value="Submit Similar Selections (0)"),
                 "",
+                f"Uploads completed: {new_upload_count} of 3-5 recommended",
                 f"Uploads completed: {new_upload_count} of 3-5 recommended",
                 gr.update(visible=new_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
             )
@@ -1985,7 +2641,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
 
             return (
                 selected_indices,
-                gr.update(value=btn_text, interactive=True),
+                gr.update(value=btn_text, interactive=(count > 0)),
                 gr.update(value=count_text, visible=True)
             )
 
@@ -2015,7 +2671,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     gr.update(visible=False),
                     [],
                     "[]",
-                    gr.update(visible=False),
+                    gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
                     "",
                     "Upload a photo, then tap Find Similar Dresses.",
                     "Ready for a new upload.",
@@ -2075,7 +2731,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 gr.update(visible=False, value=""),
                 [],
                 "[]",
-                gr.update(visible=False),
+                gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
                 "",
                 "Upload another photo, then tap Find Similar Dresses.",
                 "Ready for another upload.",
@@ -2183,6 +2839,36 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             outputs=[disagree_message]
         )
 
+        mobile_bottom_nav.click(
+            fn=on_back_to_terms,
+            inputs=[],
+            outputs=[
+                consent_screen,
+                main_app_screen,
+                debrief_screen,
+                session_id_state,
+                user_id_state,
+                upload_id_state,
+                current_results_state,
+                selected_indices_state,
+                gallery_images_state,
+                upload_count_state,
+                upload_image,
+                status_text,
+                progress_text,
+                selection_instructions,
+                selection_count,
+                selected_indices_input,
+                submit_btn,
+                submit_status,
+                results_grid_html,
+                upload_progress,
+                upload_progress_mobile,
+                finish_btn,
+            ],
+            show_progress="hidden",
+        )
+
         # Search events
         search_dep = search_btn.click(
             fn=on_search,
@@ -2193,7 +2879,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 status_text, progress_text,
                 selection_instructions, selection_count, results_grid_html,
                 selected_indices_input, submit_btn, submit_status,
-                upload_progress, finish_btn
+                upload_progress, upload_progress_mobile, finish_btn
             ],
             show_progress="hidden",
         )
@@ -2203,7 +2889,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             outputs=[],
             show_progress="hidden",
             queue=False,
-            js="() => { window.__dressa_stop_participant_loader?.(); }",
+            js="() => { window.__dressa_clear_participant_loader?.(); window.__dressa_reset_selection_order?.(); window.__dressa_sync_mobile_labels?.(); }",
         )
         search_dep.failure(
             fn=None,
@@ -2211,7 +2897,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             outputs=[],
             show_progress="hidden",
             queue=False,
-            js="() => { window.__dressa_stop_participant_loader?.(); }",
+            js="() => { window.__dressa_clear_participant_loader?.(); }",
         )
 
         # Submit events
@@ -2234,7 +2920,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             outputs=[],
             show_progress="hidden",
             queue=False,
-            js="() => { window.__dressa_stop_participant_loader?.(); }",
+            js="() => { window.__dressa_clear_participant_loader?.(); window.__dressa_reset_selection_order?.(); window.__dressa_sync_mobile_labels?.(); }",
         )
         submit_dep.failure(
             fn=None,
@@ -2242,7 +2928,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             outputs=[],
             show_progress="hidden",
             queue=False,
-            js="() => { window.__dressa_stop_participant_loader?.(); }",
+            js="() => { window.__dressa_clear_participant_loader?.(); }",
         )
 
         # Finish study events
