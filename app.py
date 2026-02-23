@@ -973,8 +973,8 @@ h1, h2, h3 {
 }
 
 .result-item.selected {
-    border-color: var(--accent-2);
-    box-shadow: 0 0 0 3px rgba(31, 111, 91, 0.22), 0 14px 32px rgba(14, 43, 36, 0.25);
+    border-color: rgba(246, 150, 47, 0.92);
+    box-shadow: 0 0 0 3px rgba(246, 150, 47, 0.34), 0 14px 32px rgba(96, 51, 29, 0.24);
 }
 
 .result-item .select-chip,
@@ -2333,11 +2333,17 @@ function attachResultsObserver() {
         setTimeout(attachResultsObserver, 400);
         return;
     }
+    let lastResultItemCount = -1;
     const observer = new MutationObserver(() => {
+        const currentCount = container.querySelectorAll('.result-item').length;
+        if (currentCount === lastResultItemCount) {
+            return;
+        }
+        lastResultItemCount = currentCount;
         window.__dressa_reset_selection_order?.();
         syncMobileLabels();
     });
-    observer.observe(container, { childList: true, subtree: true });
+    observer.observe(container, { childList: true, subtree: false });
     window.__dressaResultsObserverAttached = true;
 }
 
