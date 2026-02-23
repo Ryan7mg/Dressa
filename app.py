@@ -745,8 +745,33 @@ body, .gradio-container {
 }
 
 #main-row {
+    display: grid !important;
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    grid-template-areas:
+        "upload results"
+        "search results";
     gap: 26px;
     align-items: flex-start;
+}
+
+#upload-col {
+    grid-area: upload;
+}
+
+#search-row {
+    grid-area: search;
+    margin: 0;
+    justify-content: flex-start;
+    align-self: start;
+    width: 100%;
+}
+
+#search-row #search-btn {
+    width: min(360px, 100%);
+}
+
+#results-col {
+    grid-area: results;
 }
 
 #upload-col, #results-col {
@@ -1005,7 +1030,7 @@ h1, h2, h3 {
 
 #submit-btn button,
 #submit-btn {
-    width: 100% !important;
+    width: auto !important;
 }
 
 #submit-btn {
@@ -1043,6 +1068,17 @@ button#disagree-btn,
     background: linear-gradient(160deg, #efefef 0%, #dfdfdf 52%, #cecece 100%) !important;
     color: #232323 !important;
     box-shadow: 0 12px 22px rgba(75, 75, 75, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+#search-btn button[disabled],
+#search-btn button:disabled,
+#search-btn button[aria-disabled="true"] {
+    border-color: rgba(188, 188, 188, 0.95) !important;
+    background: linear-gradient(160deg, #dddddd 0%, #cccccc 52%, #bdbdbd 100%) !important;
+    color: rgba(67, 67, 67, 0.92) !important;
+    box-shadow: none !important;
+    cursor: not-allowed !important;
+    opacity: 1 !important;
 }
 
 .gr-button.primary,
@@ -1147,6 +1183,10 @@ body.dressa-searching #search-overlay {
     display: flex;
 }
 
+body.dressa-searching #search-row {
+    display: none !important;
+}
+
 #search-overlay .search-overlay-card {
     background: linear-gradient(170deg, rgba(255, 255, 255, 0.95), rgba(255, 243, 231, 0.9));
     border: 1px solid rgba(255, 230, 206, 0.95);
@@ -1193,6 +1233,43 @@ body.dressa-searching #search-overlay {
 @media (min-width: 1200px) {
     .results-grid {
         column-count: 4;
+    }
+}
+
+@media (min-width: 769px) {
+    #consent-actions {
+        width: auto !important;
+        align-items: flex-start !important;
+    }
+
+    #agree-btn,
+    #disagree-btn,
+    #close-btn,
+    #finish-btn,
+    #search-btn,
+    #submit-btn {
+        width: auto !important;
+        max-width: max-content !important;
+        align-self: flex-start !important;
+    }
+
+    #agree-btn button,
+    #disagree-btn button,
+    #close-btn button,
+    #finish-btn button,
+    #search-btn button,
+    #submit-btn button,
+    #submit-btn > button {
+        width: auto !important;
+        max-width: max-content !important;
+        min-width: 0 !important;
+        padding: 0 30px !important;
+        white-space: nowrap !important;
+        display: inline-flex !important;
+    }
+
+    #submit-btn {
+        margin-right: auto !important;
     }
 }
 
@@ -1337,7 +1414,12 @@ body.dressa-searching #search-overlay {
     }
 
     #main-row {
-        flex-direction: column !important;
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        grid-template-areas:
+            "upload"
+            "search"
+            "results";
         gap: 8px !important;
         align-items: stretch !important;
     }
@@ -1364,7 +1446,7 @@ body.dressa-searching #search-overlay {
         -webkit-backdrop-filter: blur(14px) saturate(135%);
         display: grid;
         grid-template-columns: 120px minmax(0, 1fr);
-        grid-template-rows: auto auto auto;
+        grid-template-rows: auto auto;
         column-gap: 10px;
         row-gap: 8px;
         align-items: start;
@@ -1372,40 +1454,154 @@ body.dressa-searching #search-overlay {
 
     #upload-image {
         grid-column: 1;
-        grid-row: 1 / span 3;
-        width: 120px;
-        min-width: 120px;
+        grid-row: 1 / span 2;
+        width: 120px !important;
+        min-width: 120px !important;
+        max-width: 120px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        border-style: none !important;
+        border-width: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+        --block-border-width: 0px !important;
+        --input-border-width: 0px !important;
+        --block-background-fill: transparent !important;
+        --block-background-fill-dark: transparent !important;
+    }
+
+    #upload-image::before,
+    #upload-image::after {
+        display: none !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
     }
 
     #upload-image .image-container {
-        width: 96px !important;
-        height: 96px !important;
-        margin: 0 auto !important;
+        width: 120px !important;
+        min-height: 0 !important;
+        height: auto !important;
+        margin: 0 !important;
         border-radius: 22px !important;
-        background: linear-gradient(160deg, rgba(234, 234, 234, 0.86), rgba(209, 209, 209, 0.76)) !important;
-        border: 1px solid rgba(246, 246, 246, 0.9) !important;
-        box-shadow: 0 10px 18px rgba(88, 47, 25, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
-        overflow: hidden;
-        backdrop-filter: blur(10px) saturate(130%);
-        -webkit-backdrop-filter: blur(10px) saturate(130%);
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        position: relative !important;
         color: transparent !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+        display: block !important;
         font-size: 0 !important;
         line-height: 0 !important;
     }
 
+    #upload-image .image-container::before {
+        display: none !important;
+        content: none !important;
+    }
+
+    #upload-image .image-container::after {
+        display: none !important;
+        content: none !important;
+    }
+
+    #upload-image .upload-container {
+        width: 120px !important;
+        min-height: 96px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    #upload-image .upload-container > button,
+    #upload-image .upload-container > button:hover,
+    #upload-image .upload-container > button:focus,
+    #upload-image .upload-container > button:focus-visible {
+        width: 120px !important;
+        min-width: 120px !important;
+        min-height: 96px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        outline: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border-radius: 22px !important;
+    }
+
+    #upload-image .upload-container > button::before,
+    #upload-image .upload-container > button::after {
+        display: none !important;
+        border: 0 !important;
+    }
+
+    #upload-image .upload-container > button .wrap {
+        width: 96px !important;
+        min-height: 96px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 1px solid rgba(246, 246, 246, 0.9) !important;
+        outline: 0 !important;
+        background: linear-gradient(160deg, rgba(234, 234, 234, 0.86), rgba(209, 209, 209, 0.76)) !important;
+        box-shadow: 0 10px 18px rgba(88, 47, 25, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+        border-radius: 22px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        position: relative !important;
+        z-index: 1;
+    }
+
+    #upload-image .upload-container > button .wrap::before {
+        content: "";
+        position: absolute;
+        width: 34px;
+        height: 34px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 100% 100%;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23506a86' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V5'/%3E%3Cpath d='m7 10 5-5 5 5'/%3E%3Cpath d='M5 16v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2'/%3E%3C/svg%3E");
+        opacity: 0.92;
+        filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.48)) drop-shadow(0 6px 10px rgba(80, 106, 134, 0.16));
+        pointer-events: none;
+        z-index: 1;
+    }
+
     #upload-image .image-preview {
         width: 120px !important;
-        height: 159px !important;
+        max-width: 120px !important;
+        height: auto !important;
+        max-height: none !important;
         margin: 0 !important;
         border-radius: 22px !important;
         background: linear-gradient(160deg, rgba(238, 238, 238, 0.86), rgba(217, 217, 217, 0.78)) !important;
         border: 1px solid rgba(246, 246, 246, 0.9) !important;
         box-shadow: 0 12px 24px rgba(88, 47, 25, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
-        overflow: hidden;
+        overflow: hidden !important;
         position: relative !important;
+        display: block !important;
+        aspect-ratio: auto !important;
+    }
+
+    #upload-image .image-container:has(img),
+    #upload-image .image-container:has(canvas),
+    #upload-image .image-preview {
+        border-radius: 22px !important;
+        border: 1px solid rgba(246, 246, 246, 0.9) !important;
+        background: linear-gradient(160deg, rgba(238, 238, 238, 0.86), rgba(217, 217, 217, 0.78)) !important;
+        box-shadow: 0 12px 24px rgba(88, 47, 25, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+        overflow: hidden !important;
     }
 
     #upload-image label,
@@ -1451,8 +1647,24 @@ body.dressa-searching #search-overlay {
 
     #upload-image .image-preview img {
         width: 100% !important;
-        height: 100% !important;
-        object-fit: cover !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        object-fit: contain !important;
+        display: block !important;
+        margin: 0 !important;
+        border-radius: 22px !important;
+        box-shadow: 0 8px 16px rgba(88, 47, 25, 0.18) !important;
+    }
+
+    #upload-image .image-container img,
+    #upload-image .image-container canvas {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        display: block !important;
+        border-radius: 22px !important;
+        box-shadow: 0 8px 16px rgba(88, 47, 25, 0.18) !important;
     }
 
     #upload-image .image-preview button[aria-label="Clear"],
@@ -1477,29 +1689,33 @@ body.dressa-searching #search-overlay {
         grid-row: 1;
         display: flex;
         flex-direction: column;
-        gap: 7px;
+        gap: 6px;
+        margin-top: 2px !important;
     }
 
     #mobile-instructions .mobile-step {
         background: rgba(255, 255, 255, 0.74);
         border: 1px solid rgba(255, 255, 255, 0.72);
-        border-radius: 22px;
-        min-height: 32px;
-        padding: 0 11px;
+        border-radius: 20px;
+        min-height: 36px;
+        padding: 6px 10px;
         box-shadow: 0 8px 18px rgba(92, 48, 25, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.65);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
         display: flex;
-        align-items: center;
-        gap: 7px;
+        align-items: flex-start;
+        gap: 6px;
         font-size: 12px;
-        line-height: 1.15;
+        line-height: 1.3;
         color: #2b2b2b;
     }
 
     #mobile-instructions .mobile-step-num {
-        width: 18px;
-        height: 18px;
+        width: 19px;
+        height: 19px;
+        min-width: 19px;
+        flex: 0 0 19px;
+        aspect-ratio: 1 / 1;
         border-radius: 50%;
         background: linear-gradient(155deg, #ffac4e, #f17f21);
         color: #fff;
@@ -1508,22 +1724,33 @@ body.dressa-searching #search-overlay {
         justify-content: center;
         font-weight: 700;
         font-size: 10px;
+        line-height: 1;
         box-shadow: 0 4px 10px rgba(179, 93, 25, 0.24);
     }
 
+    #mobile-instructions .mobile-step > span:last-child {
+        white-space: normal;
+        overflow: visible;
+        text-overflow: initial;
+    }
+
     #search-btn {
-        grid-column: 1 / -1;
-        grid-row: 3;
         width: 100%;
         margin: 0;
         display: flex;
         justify-content: center;
     }
 
+    #search-row {
+        width: min(352px, calc(100vw - 24px));
+        margin: 4px auto 10px !important;
+        justify-content: center !important;
+    }
+
     #search-btn button {
-        width: auto !important;
-        min-width: 164px !important;
-        max-width: calc(100vw - 24px) !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: none !important;
         min-height: 52px !important;
         border-radius: 999px !important;
         border: 1px solid rgba(255, 212, 166, 0.88) !important;
@@ -1574,14 +1801,16 @@ body.dressa-searching #search-overlay {
     #upload-progress-mobile {
         grid-column: 2;
         grid-row: 2;
-        margin: 2px 2px 0 2px !important;
-        padding: 0;
-        border: none !important;
-        background: transparent !important;
+        margin: 2px 0 0 0 !important;
+        padding: 4px 8px;
+        border: 1px solid rgba(255, 255, 255, 0.65) !important;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.62) !important;
         font-size: 12px;
         color: rgba(56, 34, 19, 0.86);
         font-weight: 600;
-        line-height: 1.3;
+        line-height: 1.35;
+        white-space: normal !important;
     }
 
     #results-col {
@@ -2310,7 +2539,7 @@ University of Glasgow - School of Computing Science
                         elem_id="upload-image"
                     )
                     gr.HTML("""
-                        <div class="mobile-step"><span class="mobile-step-num">1</span><span>Upload a clear dress photo</span></div>
+                        <div class="mobile-step"><span class="mobile-step-num">1</span><span>Upload a photo of a dress</span></div>
                         <div class="mobile-step"><span class="mobile-step-num">2</span><span>Select similar dresses</span></div>
                         <div class="mobile-step"><span class="mobile-step-num">3</span><span>Submit and Continue</span></div>
                     """, elem_id="mobile-instructions")
@@ -2318,7 +2547,6 @@ University of Glasgow - School of Computing Science
                         "Use gallery or camera. If you pick the wrong photo, use the X icon to remove and re-upload.",
                         elem_id="upload-helper",
                     )
-                    search_btn = gr.Button("Find Similar Dresses", variant="primary", elem_id="search-btn")
                     upload_progress_mobile = gr.Markdown(
                         "Uploads completed: 0 of 3-5 recommended",
                         elem_id="upload-progress-mobile"
@@ -2327,6 +2555,14 @@ University of Glasgow - School of Computing Science
 
                     # Finish button (appears after minimum uploads)
                     finish_btn = gr.Button("Finish Study", variant="secondary", visible=False, elem_id="finish-btn")
+
+                with gr.Row(elem_id="search-row"):
+                    search_btn = gr.Button(
+                        "Find Similar Dresses",
+                        variant="primary",
+                        elem_id="search-btn",
+                        interactive=False,
+                    )
 
                 # Right column: Results
                 with gr.Column(scale=2, min_width=0, elem_id="results-col"):
@@ -2526,6 +2762,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 gr.update(value=""),  # results_grid_html
                 gr.update(value=reset_progress),  # upload_progress
                 gr.update(value=reset_progress),  # upload_progress_mobile
+                gr.update(interactive=False),  # search_btn
                 gr.update(visible=False),  # finish_btn
             )
 
@@ -2580,6 +2817,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     "",
                     f"Uploads completed: {upload_count} of 3-5 recommended",
                     f"Uploads completed: {upload_count} of 3-5 recommended",
+                    gr.update(interactive=False),
                     gr.update(visible=upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
 
@@ -2608,6 +2846,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     "",
                     f"Uploads completed: {new_upload_count} of 3-5 recommended",
                     f"Uploads completed: {new_upload_count} of 3-5 recommended",
+                    gr.update(interactive=True),
                     gr.update(visible=new_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
 
@@ -2627,8 +2866,13 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 "",
                 f"Uploads completed: {new_upload_count} of 3-5 recommended",
                 f"Uploads completed: {new_upload_count} of 3-5 recommended",
+                gr.update(interactive=True),
                 gr.update(visible=new_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
             )
+
+        def on_upload_image_change(image):
+            """Enable search only when an upload is present."""
+            return gr.update(interactive=(image is not None))
 
         def on_selection_change(selected_indices_json, gallery_images):
             """Handle selection change from JavaScript."""
@@ -2675,7 +2919,8 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     "",
                     "Upload a photo, then tap Find Similar Dresses.",
                     "Ready for a new upload.",
-                    gr.update(value=None)
+                    gr.update(value=None),
+                    gr.update(interactive=False),
                 )
 
             selected_set = set(selected_indices)
@@ -2735,7 +2980,8 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 "",
                 "Upload another photo, then tap Find Similar Dresses.",
                 "Ready for another upload.",
-                gr.update(value=None)
+                gr.update(value=None),
+                gr.update(interactive=False),
             )
 
         def on_finish(session_id):
@@ -2864,8 +3110,16 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 results_grid_html,
                 upload_progress,
                 upload_progress_mobile,
+                search_btn,
                 finish_btn,
             ],
+            show_progress="hidden",
+        )
+
+        upload_image.change(
+            fn=on_upload_image_change,
+            inputs=[upload_image],
+            outputs=[search_btn],
             show_progress="hidden",
         )
 
@@ -2879,7 +3133,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 status_text, progress_text,
                 selection_instructions, selection_count, results_grid_html,
                 selected_indices_input, submit_btn, submit_status,
-                upload_progress, upload_progress_mobile, finish_btn
+                upload_progress, upload_progress_mobile, search_btn, finish_btn
             ],
             show_progress="hidden",
         )
@@ -2910,7 +3164,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             outputs=[
                 submit_status, selection_instructions, selection_count, selected_indices_state,
                 selected_indices_input, submit_btn, results_grid_html,
-                progress_text, status_text, upload_image
+                progress_text, status_text, upload_image, search_btn
             ],
             show_progress="hidden",
         )
