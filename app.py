@@ -1548,7 +1548,8 @@ body:not(.dressa-main-active) #submit-btn {
     }
 
     #consent-screen {
-        padding-bottom: 190px !important;
+        padding: 10px 10px 190px !important;
+        box-sizing: border-box !important;
     }
 
     #consent-screen h1 {
@@ -1782,14 +1783,6 @@ body:not(.dressa-main-active) #submit-btn {
         align-items: start;
         overflow: hidden !important;
         isolation: isolate !important;
-    }
-
-    body.dressa-parent-scroll #upload-col {
-        position: absolute !important;
-        top: 0 !important;
-        left: 1px !important;
-        right: 1px !important;
-        transform: translateY(var(--hf-parent-sticky-y, 0px)) !important;
     }
 
     #upload-col::before {
@@ -2387,16 +2380,6 @@ body:not(.dressa-main-active) #submit-btn {
         pointer-events: auto !important;
     }
 
-    body.dressa-parent-scroll #submit-btn:not(button),
-    body.dressa-parent-scroll button#submit-btn {
-        position: absolute !important;
-        top: var(--hf-submit-top, 0px) !important;
-        bottom: auto !important;
-        left: 50% !important;
-        right: auto !important;
-        transform: translateX(-50%) !important;
-    }
-
     button#submit-btn,
     #submit-btn button,
     #submit-btn > button {
@@ -2676,10 +2659,6 @@ function updateMobileUploadOffset() {
     }
 }
 
-function isParentScrollMode() {
-    return Boolean(window.__dressaParentScrollMode);
-}
-
 function isMainAppVisible() {
     const main = document.getElementById('main-app-screen');
     if (!main) return false;
@@ -2699,65 +2678,7 @@ function scrollToResultsStart() {
     const uploadHeight = Math.ceil(uploadCol?.getBoundingClientRect().height || 0);
     const containerTop = container.getBoundingClientRect().top + window.scrollY;
     const targetTop = Math.max(0, containerTop - uploadHeight - 6);
-    if (isParentScrollMode() && window.parentIFrame && typeof window.parentIFrame.scrollTo === 'function') {
-        const pageInfo = window.__dressaParentPageInfo || {};
-        const parentTargetTop = Math.max(0, (Number(pageInfo.offsetTop) || 0) + targetTop);
-        window.parentIFrame.scrollTo(0, parentTargetTop);
-        return;
-    }
     window.scrollTo({ top: targetTop, behavior: 'smooth' });
-}
-
-function applyParentPageInfo(pageInfo) {
-    if (!pageInfo || !isCompactLayout()) return;
-    if (!isMainAppVisible()) return;
-
-    const uploadCol = document.getElementById('upload-col');
-    const main = document.getElementById('main-app-screen');
-    const submitHost = document.getElementById('submit-btn');
-
-    const scrollTop = Number(pageInfo.scrollTop) || 0;
-    const offsetTop = Number(pageInfo.offsetTop) || 0;
-    const clientHeight = Number(pageInfo.clientHeight) || window.innerHeight || 0;
-    const iframeViewportTop = Math.max(0, scrollTop - offsetTop);
-
-    let stickyY = iframeViewportTop + 1;
-    if (uploadCol && main) {
-        const maxStickyY = Math.max(0, (main.scrollHeight || 0) - (uploadCol.offsetHeight || 0) - 4);
-        stickyY = Math.min(stickyY, maxStickyY);
-    }
-    document.documentElement.style.setProperty('--hf-parent-sticky-y', `${stickyY}px`);
-
-    const hasResults = document.querySelectorAll('.result-item').length > 0;
-    if (submitHost && hasResults) {
-        const submitHeight = Math.ceil(submitHost.getBoundingClientRect().height || submitHost.offsetHeight || 52);
-        const bottomInset = 68;
-        let submitTop = iframeViewportTop + clientHeight - bottomInset - submitHeight;
-        const maxSubmitTop = Math.max(0, (main?.scrollHeight || submitTop) - submitHeight - 8);
-        submitTop = Math.min(Math.max(stickyY + 8, submitTop), maxSubmitTop);
-        document.documentElement.style.setProperty('--hf-submit-top', `${submitTop}px`);
-    } else {
-        document.documentElement.style.removeProperty('--hf-submit-top');
-    }
-}
-
-function initParentScrollBridge() {
-    if (window.__dressaParentScrollBridgeAttached) return;
-    if (!isCompactLayout()) return;
-    if (window.top === window.self) return;
-    if (!window.parentIFrame || typeof window.parentIFrame.getPageInfo !== 'function') return;
-
-    try {
-        window.parentIFrame.getPageInfo((info) => {
-            window.__dressaParentPageInfo = info || {};
-            window.__dressaParentScrollMode = true;
-            document.body.classList.add('dressa-parent-scroll');
-            applyParentPageInfo(window.__dressaParentPageInfo);
-        });
-        window.__dressaParentScrollBridgeAttached = true;
-    } catch (error) {
-        console.warn('parentIFrame pageInfo bridge unavailable', error);
-    }
 }
 
 function dockMobileSubmitButton() {
@@ -2786,12 +2707,9 @@ function dockMobileSubmitButton() {
         }
 
         const dockBottom = 'calc(62px + env(safe-area-inset-bottom))';
-        submitHost.style.setProperty('position', isParentScrollMode() ? 'absolute' : 'fixed', 'important');
+        submitHost.style.setProperty('position', 'fixed', 'important');
         submitHost.style.setProperty('top', 'auto', 'important');
-        submitHost.style.setProperty('bottom', isParentScrollMode() ? 'auto' : dockBottom, 'important');
-        if (isParentScrollMode()) {
-            submitHost.style.setProperty('top', 'var(--hf-submit-top, 0px)', 'important');
-        }
+        submitHost.style.setProperty('bottom', dockBottom, 'important');
         submitHost.style.setProperty('left', '50%', 'important');
         submitHost.style.setProperty('right', 'auto', 'important');
         submitHost.style.setProperty('transform', 'translateX(-50%)', 'important');
@@ -2910,7 +2828,6 @@ function syncMobileLabels() {
         submitBtn.setAttribute('aria-disabled', String(submitBtn.disabled));
     }
     updateMobileUploadOffset();
-    applyParentPageInfo(window.__dressaParentPageInfo || {});
     dockMobileSubmitButton();
 }
 
@@ -2973,7 +2890,6 @@ function updateSelectionUi(selected) {
         submitBtn.setAttribute('aria-disabled', String(submitBtn.disabled));
     }
     updateMobileUploadOffset();
-    applyParentPageInfo(window.__dressaParentPageInfo || {});
     dockMobileSubmitButton();
 
     const countLabel = document.getElementById('selection-count');
@@ -3028,7 +2944,6 @@ function attachResultsObserver() {
         if (currentCount > 0) {
             window.requestAnimationFrame(() => {
                 updateMobileUploadOffset();
-                applyParentPageInfo(window.__dressaParentPageInfo || {});
                 scrollToResultsStart();
             });
         }
@@ -3052,7 +2967,6 @@ function attachUploadColObserver() {
 
     const observer = new ResizeObserver(() => {
         updateMobileUploadOffset();
-        applyParentPageInfo(window.__dressaParentPageInfo || {});
         syncMobileLabels();
     });
     observer.observe(uploadCol);
@@ -3071,7 +2985,6 @@ function attachMainScreenObserver() {
         window.requestAnimationFrame(() => {
             syncMobileLabels();
             updateMobileUploadOffset();
-            applyParentPageInfo(window.__dressaParentPageInfo || {});
             dockMobileSubmitButton();
         });
     });
@@ -3102,7 +3015,6 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', attachResultsObserver, { once: true });
     document.addEventListener('DOMContentLoaded', attachUploadColObserver, { once: true });
     document.addEventListener('DOMContentLoaded', attachMainScreenObserver, { once: true });
-    document.addEventListener('DOMContentLoaded', initParentScrollBridge, { once: true });
     document.addEventListener('DOMContentLoaded', syncMobileLabels, { once: true });
     document.addEventListener('DOMContentLoaded', updateMobileUploadOffset, { once: true });
     document.addEventListener('DOMContentLoaded', dockMobileSubmitButton, { once: true });
@@ -3110,7 +3022,6 @@ if (document.readyState === 'loading') {
     attachResultsObserver();
     attachUploadColObserver();
     attachMainScreenObserver();
-    initParentScrollBridge();
     syncMobileLabels();
     updateMobileUploadOffset();
     dockMobileSubmitButton();
@@ -3123,8 +3034,6 @@ if (!window.__dressaMainPaddingWatcherAttached) {
     window.addEventListener('orientationchange', syncMobileLabels, { passive: true });
     window.addEventListener('resize', updateMobileUploadOffset, { passive: true });
     window.addEventListener('orientationchange', updateMobileUploadOffset, { passive: true });
-    window.addEventListener('resize', initParentScrollBridge, { passive: true });
-    window.addEventListener('orientationchange', initParentScrollBridge, { passive: true });
     window.addEventListener('resize', dockMobileSubmitButton, { passive: true });
     window.addEventListener('orientationchange', dockMobileSubmitButton, { passive: true });
     window.__dressaMainPaddingWatcherAttached = true;
