@@ -96,8 +96,47 @@ def init_app():
     logger.info("Dressa App initialized!")
 
 
+def _normalize_image_for_jpeg(image: np.ndarray) -> np.ndarray:
+    """Normalize uploaded image arrays for robust JPEG save/search handling."""
+    if image is None:
+        raise ValueError("Image is missing.")
+
+    arr = np.asarray(image)
+    if arr.size == 0:
+        raise ValueError("Image is empty.")
+
+    if np.issubdtype(arr.dtype, np.floating):
+        arr = np.nan_to_num(arr, nan=0.0, posinf=255.0, neginf=0.0)
+        if arr.max() <= 1.0:
+            arr = arr * 255.0
+        arr = np.clip(arr, 0.0, 255.0).astype(np.uint8)
+    elif arr.dtype == np.bool_:
+        arr = arr.astype(np.uint8) * 255
+    elif arr.dtype != np.uint8:
+        arr = np.clip(arr, 0, 255).astype(np.uint8)
+
+    if arr.ndim == 2:
+        arr = np.stack([arr, arr, arr], axis=-1)
+    elif arr.ndim == 3:
+        channels = arr.shape[2]
+        if channels == 1:
+            arr = np.repeat(arr, 3, axis=2)
+        elif channels == 3:
+            pass
+        elif channels == 4:
+            arr = arr[:, :, :3]
+        else:
+            raise ValueError(f"Unsupported channel count: {channels}. Expected 1, 3, or 4.")
+    else:
+        raise ValueError(f"Unsupported image shape: {arr.shape}.")
+
+    return np.ascontiguousarray(arr, dtype=np.uint8)
+
+
 def save_uploaded_image(image: np.ndarray, user_id: str) -> str:
     """Save uploaded image and return path."""
+    normalized_image = _normalize_image_for_jpeg(image)
+
     # Create user directory
     user_dir = UPLOADS_DIR / user_id
     user_dir.mkdir(exist_ok=True)
@@ -108,7 +147,7 @@ def save_uploaded_image(image: np.ndarray, user_id: str) -> str:
     filepath = user_dir / filename
 
     # Save image
-    Image.fromarray(image).save(filepath, "JPEG", quality=95)
+    Image.fromarray(normalized_image).save(filepath, "JPEG", quality=95)
 
     return str(filepath)
 
@@ -131,6 +170,7 @@ def search_similar_dresses(
     Returns list of result dicts for the gallery with provenance.
     """
     global model_manager
+    normalized_image = _normalize_image_for_jpeg(image)
 
     # Ensure models are loaded
     if not model_manager.is_loaded('openai_clip'):
@@ -141,11 +181,11 @@ def search_similar_dresses(
         logger.info(f"Model load total time: {load_elapsed:.2f}s")
 
     # Compute image hash for deterministic shuffle
-    image_hash = compute_image_hash(image)
+    image_hash = compute_image_hash(normalized_image)
     logger.info(f"Image hash: {image_hash}")
 
     # Convert to PIL
-    pil_image = Image.fromarray(image)
+    pil_image = Image.fromarray(normalized_image)
 
     # Get embeddings from all models
     logger.info("Extracting embeddings...")
@@ -1014,6 +1054,11 @@ button#disagree-btn,
     font-weight: 700 !important;
     letter-spacing: 0.01em !important;
     box-shadow: 0 18px 26px rgba(224, 128, 27, 0.33), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    isolation: isolate !important;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34), 0 -1px 0 rgba(138, 72, 20, 0.38), 0 6px 12px rgba(98, 51, 14, 0.30) !important;
+    -webkit-font-smoothing: antialiased !important;
 }
 
 button#disagree-btn,
@@ -1024,6 +1069,53 @@ button#disagree-btn,
     box-shadow: 0 12px 24px rgba(72, 72, 78, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.75) !important;
     backdrop-filter: blur(16px) saturate(145%) !important;
     -webkit-backdrop-filter: blur(16px) saturate(145%) !important;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.82), 0 6px 12px rgba(98, 98, 108, 0.16) !important;
+}
+
+button#agree-btn::before,
+#agree-btn button::before,
+button#search-btn::before,
+#search-btn button::before,
+button#submit-btn::before,
+#submit-btn button::before,
+button#finish-btn::before,
+#finish-btn button::before,
+button#close-btn::before,
+#close-btn button::before,
+button#disagree-btn::before,
+#disagree-btn button::before {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    border-radius: inherit;
+    background: linear-gradient(140deg, rgba(255, 255, 255, 0.40), rgba(255, 255, 255, 0.14) 42%, rgba(255, 255, 255, 0.28));
+    pointer-events: none;
+    z-index: 0;
+}
+
+button#agree-btn::after,
+#agree-btn button::after,
+button#search-btn::after,
+#search-btn button::after,
+button#submit-btn::after,
+#submit-btn button::after,
+button#finish-btn::after,
+#finish-btn button::after,
+button#close-btn::after,
+#close-btn button::after,
+button#disagree-btn::after,
+#disagree-btn button::after {
+    content: "";
+    position: absolute;
+    left: 14%;
+    right: 14%;
+    bottom: 8px;
+    height: 14px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0));
+    filter: blur(6px);
+    pointer-events: none;
+    z-index: 0;
 }
 
 #disagree-btn,
@@ -1041,6 +1133,15 @@ button#disagree-btn,
     box-shadow: none !important;
     cursor: not-allowed !important;
     opacity: 1 !important;
+}
+
+#search-btn button[disabled]::before,
+#search-btn button:disabled::before,
+#search-btn button[aria-disabled="true"]::before,
+#search-btn button[disabled]::after,
+#search-btn button:disabled::after,
+#search-btn button[aria-disabled="true"]::after {
+    display: none !important;
 }
 
 .gr-button.primary,
@@ -1067,6 +1168,52 @@ button#disagree-btn,
     box-shadow: 0 12px 22px rgba(75, 75, 75, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
 }
 
+#admin-back-gate-btn,
+#admin-back-gate-btn button,
+#admin-back-panel-btn,
+#admin-back-panel-btn button {
+    width: auto !important;
+    min-width: 180px !important;
+    max-width: max-content !important;
+    margin: 0 0 10px 0 !important;
+}
+
+#admin-secret-link {
+    position: fixed !important;
+    right: 10px !important;
+    bottom: 8px !important;
+    z-index: 6445 !important;
+    width: auto !important;
+    margin: 0 !important;
+}
+
+#admin-secret-link button,
+button#admin-secret-link {
+    min-height: 28px !important;
+    height: 28px !important;
+    border-radius: 999px !important;
+    padding: 0 10px !important;
+    font-size: 10px !important;
+    letter-spacing: 0.04em !important;
+    text-transform: lowercase !important;
+    font-weight: 600 !important;
+    border: 1px solid rgba(170, 152, 138, 0.45) !important;
+    background: rgba(255, 255, 255, 0.42) !important;
+    color: rgba(72, 58, 46, 0.55) !important;
+    box-shadow: 0 4px 12px rgba(32, 21, 12, 0.08) !important;
+    backdrop-filter: blur(6px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(6px) saturate(120%) !important;
+    opacity: 0.22 !important;
+}
+
+#admin-secret-link button:hover,
+#admin-secret-link button:focus-visible,
+button#admin-secret-link:hover,
+button#admin-secret-link:focus-visible {
+    opacity: 0.85 !important;
+    color: rgba(58, 45, 34, 0.92) !important;
+}
+
 .footer, footer {
     display: none !important;
 }
@@ -1082,6 +1229,15 @@ div[data-testid="progress"] {
 /* Hide participant-side Gradio status trackers/icons; admin remains unchanged */
 #main-app-screen [data-testid="status-tracker"] .wrap {
     display: none !important;
+}
+
+#main-app-screen [data-testid="status-tracker"] {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
 }
 
 /* Participant-only top loading bar */
@@ -1190,6 +1346,46 @@ body.dressa-has-results #search-row {
     }
 }
 
+#consent-screen {
+    position: relative;
+    padding-bottom: 190px;
+}
+
+#consent-actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 10020;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    margin: 0;
+    padding: 0 8px;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    pointer-events: none;
+}
+
+#consent-actions #agree-btn,
+#consent-actions #disagree-btn {
+    width: min(420px, calc(100% - 16px));
+    max-width: 420px;
+    margin: 0 auto;
+    pointer-events: auto;
+}
+
+#consent-actions #agree-btn button,
+#consent-actions #disagree-btn button {
+    width: 100%;
+    max-width: 100%;
+}
+
 @media (min-width: 860px) {
     .results-grid {
         column-count: 3;
@@ -1203,11 +1399,24 @@ body.dressa-has-results #search-row {
 }
 
 @media (min-width: 1025px) {
+    #consent-screen {
+        padding-bottom: 190px !important;
+    }
+
     #consent-actions {
+        position: fixed !important;
+        bottom: 12px !important;
+        left: 0 !important;
+        right: 0 !important;
         width: 100% !important;
+        padding: 0 8px !important;
         align-items: center !important;
         justify-content: center !important;
         gap: 12px !important;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        box-shadow: none !important;
     }
 
     #agree-btn,
@@ -1261,6 +1470,35 @@ body.dressa-has-results #search-row {
         width: 100% !important;
         max-width: 100% !important;
     }
+
+    #upload-click-hint-mobile {
+        display: none !important;
+    }
+
+    #upload-col {
+        position: sticky !important;
+        top: 10px !important;
+        align-self: start !important;
+    }
+
+    #upload-col #submit-btn {
+        position: static !important;
+        bottom: auto !important;
+        width: 100% !important;
+        max-width: none !important;
+        margin: 10px 0 0 0 !important;
+        display: flex !important;
+        justify-content: flex-start !important;
+    }
+
+    #upload-col #submit-btn button,
+    #upload-col #submit-btn > button {
+        width: min(330px, 100%) !important;
+        min-width: 280px !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        justify-content: center !important;
+    }
 }
 
 @media (max-width: 1024px) {
@@ -1293,7 +1531,7 @@ body.dressa-has-results #search-row {
     }
 
     #consent-screen {
-        padding-bottom: 120px !important;
+        padding-bottom: 190px !important;
     }
 
     #consent-screen h1 {
@@ -1311,16 +1549,27 @@ body.dressa-has-results #search-row {
     }
 
     #consent-actions {
-        position: sticky;
-        bottom: max(12px, env(safe-area-inset-bottom));
-        padding: 6px 8px 0;
-        gap: 10px;
-        z-index: 20;
+        position: fixed !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: max(8px, env(safe-area-inset-bottom)) !important;
+        width: 100% !important;
+        padding: 0 8px !important;
+        gap: 10px !important;
+        z-index: 10020 !important;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        box-shadow: none !important;
     }
 }
 
 #upload-progress-mobile {
     display: none;
+}
+
+#upload-click-hint-mobile {
+    margin: 0;
 }
 
 #mobile-instructions {
@@ -1371,6 +1620,12 @@ body.dressa-has-results #search-row {
         --mobile-max-width: 390px;
     }
 
+    html,
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
     body,
     .gradio-container {
         background:
@@ -1379,8 +1634,20 @@ body.dressa-has-results #search-row {
         color: #2b2b2b !important;
     }
 
+    .gradio-container.fill_width {
+        margin: 0 !important;
+    }
+
     .gradio-container {
+        margin: 0 !important;
         padding: 0 0 calc(96px + env(safe-area-inset-bottom)) !important;
+    }
+
+    .main.fillable.app.fill_width,
+    .main.fillable.svelte-99kmwu.app.fill_width,
+    .main.svelte-99kmwu {
+        margin: 0 !important;
+        padding: 0 !important;
     }
 
     .gradio-container .contain,
@@ -1397,22 +1664,30 @@ body.dressa-has-results #search-row {
     }
 
     #main-app-screen {
+        margin: 0 !important;
         margin-top: 0 !important;
         padding-top: 0 !important;
+    }
+
+    #hero-wrap {
+        display: none !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        overflow: hidden !important;
     }
 
     #hero,
     #upload-progress,
     #upload-col h3,
     #upload-helper,
-    #status-text,
     #results-col h3,
     #progress-text,
     #selection-instructions,
     #selection-count,
-    #submit-status,
-    #admin-gate-screen,
-    #admin-panel-screen {
+    #submit-status {
         display: none !important;
     }
 
@@ -1423,43 +1698,61 @@ body.dressa-has-results #search-row {
             "upload"
             "search"
             "results";
-        gap: 4px !important;
+        gap: 2px !important;
         align-items: stretch !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
 
     #upload-col {
         position: sticky !important;
-        top: max(0px, env(safe-area-inset-top)) !important;
+        top: 0 !important;
         z-index: 7200 !important;
         align-self: start !important;
         height: fit-content !important;
-        margin: 0 auto 4px !important;
-        width: min(352px, calc(100vw - 24px)) !important;
-        max-width: 352px !important;
+        justify-self: stretch !important;
+        margin: 1px 1px 2px 1px !important;
+        width: auto !important;
+        max-width: none !important;
         left: auto !important;
         right: auto !important;
         transform: none !important;
         box-sizing: border-box;
         background:
-            radial-gradient(circle at 20% 6%, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0) 52%),
-            linear-gradient(150deg, rgba(255, 243, 231, 0.78), rgba(248, 193, 149, 0.66));
-        border: 1px solid rgba(255, 255, 255, 0.5);
+            radial-gradient(circle at 16% 2%, rgba(255, 255, 255, 0.40), rgba(255, 255, 255, 0) 54%),
+            radial-gradient(circle at 100% 0%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 48%),
+            linear-gradient(150deg, rgba(255, 243, 231, 0.40), rgba(247, 189, 144, 0.34));
+        border: 1px solid rgba(255, 255, 255, 0.42);
         border-radius: 22px;
         padding: 12px;
-        box-shadow: 0 12px 28px rgba(88, 47, 25, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.58);
-        backdrop-filter: blur(14px) saturate(135%);
-        -webkit-backdrop-filter: blur(14px) saturate(135%);
+        box-shadow: 0 14px 26px rgba(88, 47, 25, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.44);
+        backdrop-filter: blur(18px) saturate(145%);
+        -webkit-backdrop-filter: blur(18px) saturate(145%);
         display: grid;
         grid-template-columns: 120px minmax(0, 1fr);
-        grid-template-rows: auto auto;
+        grid-template-rows: auto auto auto;
         column-gap: 10px;
-        row-gap: 8px;
+        row-gap: 7px;
         align-items: start;
+        overflow: hidden !important;
+    }
+
+    #upload-col::before {
+        content: "";
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        top: 4px;
+        height: 32%;
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.02));
+        pointer-events: none;
+        z-index: 0;
     }
 
     #upload-image {
         grid-column: 1;
-        grid-row: 1 / span 2;
+        grid-row: 1;
         width: 120px !important;
         min-width: 120px !important;
         max-width: 120px !important;
@@ -1475,6 +1768,7 @@ body.dressa-has-results #search-row {
         --input-border-width: 0px !important;
         --block-background-fill: transparent !important;
         --block-background-fill-dark: transparent !important;
+        z-index: 1;
     }
 
     #upload-image::before,
@@ -1526,6 +1820,14 @@ body.dressa-has-results #search-row {
         justify-content: center !important;
     }
 
+    #upload-image .upload-container [class*="text"],
+    #upload-image .upload-container [class*="label"],
+    #upload-image .upload-container p,
+    #upload-image .upload-container span {
+        display: none !important;
+        color: transparent !important;
+    }
+
     #upload-image .upload-container > button,
     #upload-image .upload-container > button:hover,
     #upload-image .upload-container > button:focus,
@@ -1553,16 +1855,28 @@ body.dressa-has-results #search-row {
         min-height: 96px !important;
         margin: 0 !important;
         padding: 0 !important;
-        border: 1px solid rgba(246, 246, 246, 0.9) !important;
+        border: 1px solid rgba(252, 252, 252, 0.94) !important;
         outline: 0 !important;
-        background: linear-gradient(160deg, rgba(234, 234, 234, 0.86), rgba(209, 209, 209, 0.76)) !important;
-        box-shadow: 0 10px 18px rgba(88, 47, 25, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+        background: linear-gradient(168deg, rgba(242, 242, 242, 0.92), rgba(210, 210, 210, 0.80)) !important;
+        box-shadow: 0 12px 22px rgba(88, 47, 25, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.82), inset 0 -8px 18px rgba(160, 160, 160, 0.16) !important;
         border-radius: 22px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         position: relative !important;
         z-index: 1;
+    }
+
+    #upload-image .upload-container > button .wrap::after {
+        content: "";
+        position: absolute;
+        left: 8px;
+        right: 8px;
+        top: 7px;
+        height: 34px;
+        border-radius: 14px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.08));
+        pointer-events: none;
     }
 
     #upload-image .upload-container > button .wrap::before {
@@ -1578,7 +1892,7 @@ body.dressa-has-results #search-row {
         background-size: 100% 100%;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23506a86' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V5'/%3E%3Cpath d='m7 10 5-5 5 5'/%3E%3Cpath d='M5 16v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2'/%3E%3C/svg%3E");
         opacity: 0.92;
-        filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.48)) drop-shadow(0 6px 10px rgba(80, 106, 134, 0.16));
+        filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.58)) drop-shadow(0 8px 12px rgba(80, 106, 134, 0.22));
         pointer-events: none;
         z-index: 1;
     }
@@ -1694,32 +2008,37 @@ body.dressa-has-results #search-row {
         grid-row: 1;
         display: flex;
         flex-direction: column;
-        gap: 6px;
-        margin-top: 2px !important;
+        gap: 0;
+        margin-top: 0 !important;
+        z-index: 1;
     }
 
     #mobile-instructions .mobile-step {
-        background: rgba(255, 255, 255, 0.74);
-        border: 1px solid rgba(255, 255, 255, 0.72);
+        background: rgba(255, 255, 255, 0.22);
+        border: 0 !important;
         border-radius: 20px;
-        min-height: 36px;
-        padding: 6px 10px;
-        box-shadow: 0 8px 18px rgba(92, 48, 25, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+        min-height: 34px;
+        padding: 5px 10px;
+        box-shadow: 0 6px 14px rgba(92, 48, 25, 0.10);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
         display: flex;
-        align-items: flex-start;
-        gap: 6px;
-        font-size: 12px;
-        line-height: 1.3;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
+        line-height: 1.2;
         color: #2b2b2b;
     }
 
+    #mobile-instructions .mobile-step + .mobile-step {
+        margin-top: 6px;
+    }
+
     #mobile-instructions .mobile-step-num {
-        width: 19px;
-        height: 19px;
-        min-width: 19px;
-        flex: 0 0 19px;
+        width: 18px;
+        height: 18px;
+        min-width: 18px;
+        flex: 0 0 18px;
         aspect-ratio: 1 / 1;
         border-radius: 50%;
         background: linear-gradient(155deg, #ffac4e, #f17f21);
@@ -1728,38 +2047,61 @@ body.dressa-has-results #search-row {
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 10px;
+        font-size: 9px;
         line-height: 1;
         box-shadow: 0 4px 10px rgba(179, 93, 25, 0.24);
     }
 
     #mobile-instructions .mobile-step > span:last-child {
-        white-space: normal;
-        overflow: visible;
-        text-overflow: initial;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+    }
+
+    #upload-click-hint-mobile {
+        grid-column: 1;
+        grid-row: 2;
+        margin: 1px 0 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: rgba(62, 54, 48, 0.88) !important;
+        font-size: 10px !important;
+        line-height: 1.15 !important;
+        font-weight: 600 !important;
+        white-space: nowrap !important;
+        text-align: center !important;
+        z-index: 1;
+    }
+
+    #upload-click-hint-mobile p {
+        margin: 0 !important;
+        color: inherit !important;
     }
 
     #search-btn {
-        width: 100%;
-        margin: 0;
+        width: auto;
+        margin: 0 auto;
         display: flex;
         justify-content: center;
     }
 
     #search-row {
-        width: min(352px, calc(100vw - 24px));
-        margin: 2px auto 4px !important;
+        width: calc(100vw - 2px);
+        margin: 1px 1px 2px 1px !important;
         justify-content: center !important;
     }
 
     #search-btn button {
-        width: 100% !important;
-        min-width: 100% !important;
-        max-width: none !important;
+        width: fit-content !important;
+        min-width: 244px !important;
+        max-width: calc(100vw - 22px) !important;
         min-height: 52px !important;
         border-radius: 999px !important;
         border: 1px solid rgba(255, 212, 166, 0.88) !important;
-        padding: 0 30px !important;
+        padding: 0 22px !important;
         background: linear-gradient(
             150deg,
             rgba(255, 190, 120, 0.80),
@@ -1769,6 +2111,9 @@ body.dressa-has-results #search-row {
         color: #fff !important;
         font-weight: 700 !important;
         letter-spacing: 0.01em !important;
+        white-space: nowrap !important;
+        text-align: center !important;
+        justify-content: center !important;
         box-shadow: 0 20px 30px rgba(224, 128, 27, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.38) !important;
         backdrop-filter: blur(10px) saturate(145%) !important;
         -webkit-backdrop-filter: blur(10px) saturate(145%) !important;
@@ -1804,23 +2149,33 @@ body.dressa-has-results #search-row {
     }
 
     #upload-progress-mobile {
-        grid-column: 2;
-        grid-row: 2;
-        margin: 2px 0 0 0 !important;
-        padding: 6px 10px !important;
-        border: 1px solid rgba(255, 255, 255, 0.72) !important;
+        grid-column: 1 / -1;
+        grid-row: 3;
+        width: fit-content !important;
+        max-width: calc(100% - 8px) !important;
+        margin: 6px auto 0 !important;
+        padding: 5px 12px !important;
+        border: 0 !important;
         border-radius: 20px;
-        background: rgba(255, 255, 255, 0.74) !important;
-        box-shadow: 0 8px 18px rgba(92, 48, 25, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+        background: rgba(255, 255, 255, 0.22) !important;
+        box-shadow: 0 6px 14px rgba(92, 48, 25, 0.10) !important;
         backdrop-filter: blur(8px) !important;
         -webkit-backdrop-filter: blur(8px) !important;
         display: flex !important;
         align-items: center !important;
-        font-size: 12px;
+        justify-content: center !important;
+        font-size: 11px;
         color: #2b2b2b !important;
         font-weight: 600;
-        line-height: 1.3;
-        white-space: normal !important;
+        line-height: 1.2;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        text-align: center !important;
+    }
+
+    #status-text {
+        display: none !important;
     }
 
     #results-col {
@@ -1919,19 +2274,19 @@ body.dressa-has-results #search-row {
         min-height: 52px !important;
         border-radius: 999px !important;
         width: auto !important;
-        min-width: 164px !important;
-        max-width: calc(100vw - 24px) !important;
-        padding: 0 30px !important;
-        border: 1px solid rgba(255, 212, 166, 0.88) !important;
+        min-width: 228px !important;
+        max-width: calc(100vw - 18px) !important;
+        padding: 0 38px !important;
+        border: 1px solid rgba(255, 222, 190, 0.72) !important;
         background: linear-gradient(
             150deg,
-            rgba(255, 190, 120, 0.80),
-            rgba(238, 137, 34, 0.86) 55%,
-            rgba(224, 124, 24, 0.82)
+            rgba(255, 190, 120, 0.56),
+            rgba(238, 137, 34, 0.68) 55%,
+            rgba(224, 124, 24, 0.60)
         ) !important;
-        backdrop-filter: blur(10px) saturate(145%) !important;
-        -webkit-backdrop-filter: blur(10px) saturate(145%) !important;
-        box-shadow: 0 20px 30px rgba(224, 128, 27, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.38) !important;
+        backdrop-filter: blur(14px) saturate(145%) !important;
+        -webkit-backdrop-filter: blur(14px) saturate(145%) !important;
+        box-shadow: 0 18px 26px rgba(224, 128, 27, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
         pointer-events: auto !important;
         z-index: 6506 !important;
     }
@@ -2005,6 +2360,12 @@ body.dressa-has-results #search-row {
     #mobile-bottom-nav button::after,
     button#mobile-bottom-nav::before,
     button#mobile-bottom-nav::after {
+        display: none !important;
+    }
+
+    #admin-secret-link,
+    #admin-secret-link button,
+    button#admin-secret-link {
         display: none !important;
     }
 }
@@ -2168,33 +2529,84 @@ function dockMobileSubmitButton() {
 
     const submitBtn = submitHost.matches('button')
         ? submitHost
-        : (submitHost.querySelector('button') || submitHost);
-    if (!submitBtn) return;
+        : (submitHost.querySelector('button') || null);
+
+    if (!window.__dressaSubmitOriginalParent) {
+        window.__dressaSubmitOriginalParent = submitHost.parentElement || null;
+        window.__dressaSubmitOriginalNextSibling = submitHost.nextSibling || null;
+    }
 
     if (isCompactLayout()) {
-        if (submitBtn.dataset.mobileDocked !== '1') {
-            const dockBottom = 'calc(62px + env(safe-area-inset-bottom))';
-            submitBtn.style.setProperty('position', 'fixed', 'important');
+        if (submitHost.parentElement !== document.body) {
+            document.body.appendChild(submitHost);
+        }
+
+        const dockBottom = 'calc(62px + env(safe-area-inset-bottom))';
+        submitHost.style.setProperty('position', 'fixed', 'important');
+        submitHost.style.setProperty('top', 'auto', 'important');
+        submitHost.style.setProperty('bottom', dockBottom, 'important');
+        submitHost.style.setProperty('left', '50%', 'important');
+        submitHost.style.setProperty('right', 'auto', 'important');
+        submitHost.style.setProperty('transform', 'translateX(-50%)', 'important');
+        submitHost.style.setProperty('z-index', '6505', 'important');
+        submitHost.style.setProperty('margin', '0', 'important');
+        submitHost.style.setProperty('width', 'auto', 'important');
+        submitHost.style.setProperty('text-align', 'center', 'important');
+        submitHost.style.setProperty('overflow', 'visible', 'important');
+        submitHost.style.setProperty('pointer-events', submitHost.matches('button') ? 'auto' : 'none', 'important');
+        submitHost.dataset.mobileDocked = '1';
+
+        if (submitBtn && submitBtn !== submitHost) {
+            submitBtn.style.setProperty('position', 'relative', 'important');
             submitBtn.style.setProperty('top', 'auto', 'important');
-            submitBtn.style.setProperty('bottom', dockBottom, 'important');
-            submitBtn.style.setProperty('left', '50%', 'important');
+            submitBtn.style.setProperty('left', 'auto', 'important');
             submitBtn.style.setProperty('right', 'auto', 'important');
-            submitBtn.style.setProperty('transform', 'translateX(-50%)', 'important');
-            submitBtn.style.setProperty('z-index', '6501', 'important');
+            submitBtn.style.setProperty('bottom', 'auto', 'important');
+            submitBtn.style.setProperty('transform', 'none', 'important');
+            submitBtn.style.setProperty('margin', '0 auto', 'important');
+            submitBtn.style.setProperty('width', 'auto', 'important');
             submitBtn.style.setProperty('pointer-events', 'auto', 'important');
-            submitBtn.dataset.mobileDocked = '1';
+            submitBtn.style.setProperty('z-index', '6506', 'important');
         }
     } else {
-        if (submitBtn.dataset.mobileDocked === '1') {
-            submitBtn.style.removeProperty('position');
-            submitBtn.style.removeProperty('top');
-            submitBtn.style.removeProperty('bottom');
-            submitBtn.style.removeProperty('left');
-            submitBtn.style.removeProperty('right');
-            submitBtn.style.removeProperty('transform');
-            submitBtn.style.removeProperty('z-index');
-            submitBtn.style.removeProperty('pointer-events');
-            delete submitBtn.dataset.mobileDocked;
+        if (window.__dressaSubmitOriginalParent && submitHost.parentElement !== window.__dressaSubmitOriginalParent) {
+            const parent = window.__dressaSubmitOriginalParent;
+            const sibling = window.__dressaSubmitOriginalNextSibling;
+            if (sibling && sibling.parentNode === parent) {
+                parent.insertBefore(submitHost, sibling);
+            } else {
+                parent.appendChild(submitHost);
+            }
+        }
+
+        if (submitHost.dataset.mobileDocked === '1') {
+            submitHost.style.removeProperty('position');
+            submitHost.style.removeProperty('top');
+            submitHost.style.removeProperty('bottom');
+            submitHost.style.removeProperty('left');
+            submitHost.style.removeProperty('right');
+            submitHost.style.removeProperty('transform');
+            submitHost.style.removeProperty('z-index');
+            submitHost.style.removeProperty('margin');
+            submitHost.style.removeProperty('width');
+            submitHost.style.removeProperty('text-align');
+            submitHost.style.removeProperty('overflow');
+            submitHost.style.removeProperty('pointer-events');
+
+            if (submitBtn && submitBtn !== submitHost) {
+                submitBtn.style.removeProperty('position');
+                submitBtn.style.removeProperty('top');
+                submitBtn.style.removeProperty('left');
+                submitBtn.style.removeProperty('right');
+                submitBtn.style.removeProperty('bottom');
+                submitBtn.style.removeProperty('transform');
+                submitBtn.style.removeProperty('margin');
+                submitBtn.style.removeProperty('width');
+                submitBtn.style.removeProperty('pointer-events');
+                submitBtn.style.removeProperty('z-index');
+            }
+
+            delete submitHost.dataset.mobileDocked;
         }
     }
 }
@@ -2223,7 +2635,7 @@ function syncMobileLabels() {
     }
     const searchBtn = document.querySelector('#search-btn button') || document.querySelector('#search-btn');
     if (searchBtn) {
-        searchBtn.textContent = 'Search';
+        searchBtn.textContent = 'Find Similar Dresses';
     }
     const submitBtn = document.querySelector('#submit-btn button') || document.querySelector('#submit-btn');
     if (submitBtn) {
@@ -2383,15 +2795,6 @@ if (!window.__dressaMainPaddingWatcherAttached) {
     window.addEventListener('orientationchange', syncMobileLabels, { passive: true });
     window.addEventListener('resize', dockMobileSubmitButton, { passive: true });
     window.addEventListener('orientationchange', dockMobileSubmitButton, { passive: true });
-    const mainPaddingObserver = new MutationObserver(() => {
-        enforceMobileMainPadding();
-    });
-    mainPaddingObserver.observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['class', 'style']
-    });
     window.__dressaMainPaddingWatcherAttached = true;
 }
 
@@ -2502,6 +2905,7 @@ def create_app():
         selected_indices_state = gr.State(value=[])
         gallery_images_state = gr.State(value=[])
         upload_count_state = gr.State(value=0)
+        participant_view_state = gr.State(value="consent")
 
         # ==================== CONSENT SCREEN ====================
         with gr.Column(visible=True, min_width=0, elem_id="consent-screen") as consent_screen:
@@ -2597,7 +3001,7 @@ University of Glasgow - School of Computing Science
                     <div class="step"><span class="step-num">3</span>Submit ratings and continue</div>
                 </div>
             </div>
-            """)
+            """, elem_id="hero-wrap")
 
             # Progress tracker
             upload_progress = gr.Markdown("Uploads completed: 0 of 3-5 recommended", elem_id="upload-progress")
@@ -2613,10 +3017,15 @@ University of Glasgow - School of Computing Science
                         sources=["upload"],
                         elem_id="upload-image"
                     )
+                    upload_click_hint_mobile = gr.Markdown(
+                        "Click to upload",
+                        elem_id="upload-click-hint-mobile",
+                        visible=True,
+                    )
                     gr.HTML("""
-                        <div class="mobile-step"><span class="mobile-step-num">1</span><span>Upload a photo of a dress</span></div>
+                        <div class="mobile-step"><span class="mobile-step-num">1</span><span>Upload dress photo</span></div>
                         <div class="mobile-step"><span class="mobile-step-num">2</span><span>Select similar dresses</span></div>
-                        <div class="mobile-step"><span class="mobile-step-num">3</span><span>Submit and Continue</span></div>
+                        <div class="mobile-step"><span class="mobile-step-num">3</span><span>Submit and continue</span></div>
                     """, elem_id="mobile-instructions")
                     gr.Markdown(
                         "Use gallery or camera. If you pick the wrong photo, use the X icon to remove and re-upload.",
@@ -2626,10 +3035,20 @@ University of Glasgow - School of Computing Science
                         "Uploads completed: 0 of 3-5 recommended",
                         elem_id="upload-progress-mobile"
                     )
-                    status_text = gr.Markdown("Upload a dress photo to begin.", elem_id="status-text")
+                    status_text = gr.Markdown("", elem_id="status-text")
 
                     # Finish button (appears after minimum uploads)
                     finish_btn = gr.Button("Finish Study", variant="secondary", visible=False, elem_id="finish-btn")
+
+                    # Submit button (desktop: sits in upload column; mobile: JS docks fixed)
+                    submit_btn = gr.Button(
+                        "Submit Similar Selections (0)",
+                        variant="primary",
+                        size="lg",
+                        visible=False,
+                        interactive=True,
+                        elem_id="submit-btn"
+                    )
 
                 with gr.Row(elem_id="search-row"):
                     search_btn = gr.Button(
@@ -2668,16 +3087,6 @@ University of Glasgow - School of Computing Science
                     with gr.Column(elem_id="results-grid-stage", min_width=0):
                         results_grid_html = gr.HTML(value="", elem_id="results-grid-container")
 
-            # Submit button (outside results column so it can overlay results area)
-            submit_btn = gr.Button(
-                "Submit Similar Selections (0)",
-                variant="primary",
-                size="lg",
-                visible=False,
-                interactive=True,
-                elem_id="submit-btn"
-            )
-
             mobile_bottom_nav = gr.Button("Dressa", elem_id="mobile-bottom-nav")
 
         # ==================== DEBRIEF SCREEN ====================
@@ -2711,7 +3120,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             close_message = gr.Markdown("")
 
         # ==================== ADMIN ANALYTICS (PASSWORD GATED) ====================
-        with gr.Column(visible=True, elem_id="admin-gate-screen") as admin_gate_screen:
+        with gr.Column(visible=False, elem_id="admin-gate-screen") as admin_gate_screen:
             gr.Markdown("## Admin Analytics")
             gr.Markdown(
                 "Private research panel for live model performance and per-upload results."
@@ -2729,8 +3138,10 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             )
             admin_unlock_btn = gr.Button("Unlock Admin", variant="secondary")
             admin_unlock_status = gr.Markdown("")
+            admin_back_btn_gate = gr.Button("Back to Study", variant="secondary", elem_id="admin-back-gate-btn")
 
         with gr.Column(visible=False, elem_id="admin-panel-screen") as admin_panel_screen:
+            admin_back_btn_panel = gr.Button("Back to Study", variant="secondary", elem_id="admin-back-panel-btn")
             with gr.Tabs():
                 with gr.Tab("Model leaderboard"):
                     leaderboard_summary = gr.Markdown(
@@ -2790,6 +3201,8 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                         raw_csv_file = gr.File(label="CSV file", interactive=False)
                     raw_csv_status = gr.Markdown("")
 
+        admin_secret_link = gr.Button("research tools", variant="secondary", size="sm", elem_id="admin-secret-link")
+
         # ==================== Event Handlers ====================
 
         def on_agree():
@@ -2803,6 +3216,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 gr.update(visible=False),  # Hide consent screen
                 gr.update(visible=True),   # Show main app
                 gr.update(visible=False),  # Keep debrief hidden
+                "main",  # participant_view_state
             )
 
         def on_disagree():
@@ -2827,7 +3241,8 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 [],    # gallery_images_state
                 0,     # upload_count_state
                 gr.update(value=None),  # upload_image
-                gr.update(value="Upload a dress photo to begin."),  # status_text
+                gr.update(value="Click to upload", visible=True),  # upload_click_hint_mobile
+                gr.update(value=""),  # status_text
                 gr.update(value="Upload a photo, then tap Find Similar Dresses."),  # progress_text
                 gr.update(visible=False),  # selection_instructions
                 gr.update(visible=False, value=""),  # selection_count
@@ -2839,6 +3254,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 gr.update(value=reset_progress),  # upload_progress_mobile
                 gr.update(interactive=False),  # search_btn
                 gr.update(visible=False),  # finish_btn
+                "consent",  # participant_view_state
             )
 
         def generate_results_grid_html(gallery_images: list, selected_indices: list) -> str:
@@ -2882,7 +3298,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             if image is None:
                 return (
                     user_id, upload_id, [], [], [], upload_count,
-                    "Please upload or take a dress photo first.",
+                    "",
                     "Upload a photo, then tap Find Similar Dresses.",
                     gr.update(visible=False),
                     gr.update(visible=False),
@@ -2896,58 +3312,94 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     gr.update(visible=upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
 
-            # Save uploaded image
-            filepath = save_uploaded_image(image, user_id)
-            upload_id = db.create_upload(user_id, filepath)
-            new_upload_count = upload_count + 1
-            logger.info(f"New upload: {upload_id} (count: {new_upload_count})")
+            next_upload_id = upload_id
+            next_upload_count = upload_count
+            upload_record_created = False
 
-            # Search for similar dresses
-            results = search_similar_dresses(image, user_id, upload_id)
+            try:
+                # Save uploaded image
+                filepath = save_uploaded_image(image, user_id)
+                next_upload_id = db.create_upload(user_id, filepath)
+                next_upload_count = upload_count + 1
+                upload_record_created = True
+                logger.info(f"New upload: {next_upload_id} (count: {next_upload_count})")
 
-            # Filter results to corpus-only images and build gallery
-            filtered_results, gallery_images = filter_results_for_gallery(results)
+                # Search for similar dresses
+                results = search_similar_dresses(image, user_id, next_upload_id)
 
-            if not gallery_images:
+                # Filter results to corpus-only images and build gallery
+                filtered_results, gallery_images = filter_results_for_gallery(results)
+
+                if not gallery_images:
+                    return (
+                        user_id, next_upload_id, filtered_results, [], [], next_upload_count,
+                        "Search complete, but no corpus images were found.",
+                        "No results found. Try another photo.",
+                        gr.update(visible=False),
+                        gr.update(visible=False),
+                        "",
+                        "[]",
+                        gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
+                        "",
+                        f"Uploads completed: {next_upload_count} of 3-5 recommended",
+                        f"Uploads completed: {next_upload_count} of 3-5 recommended",
+                        gr.update(interactive=True),
+                        gr.update(visible=next_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
+                    )
+
+                progress_msg = f"Found **{len(gallery_images)}** similar dresses. Select all matching images, then submit."
+                selection_text = f"Selected: 0 of {len(gallery_images)}"
+                grid_html = generate_results_grid_html(gallery_images, [])
+
                 return (
-                    user_id, upload_id, filtered_results, [], [], new_upload_count,
-                    "Search complete, but no corpus images were found.",
-                    "No results found. Try another photo.",
+                    user_id, next_upload_id, filtered_results, [], gallery_images, next_upload_count,
+                    "",
+                    progress_msg,
+                    gr.update(visible=True),
+                    gr.update(visible=True, value=selection_text),
+                    grid_html,
+                    "[]",
+                    gr.update(visible=True, interactive=False, value="Submit Similar Selections (0)"),
+                    "",
+                    f"Uploads completed: {next_upload_count} of 3-5 recommended",
+                    f"Uploads completed: {next_upload_count} of 3-5 recommended",
+                    gr.update(interactive=True),
+                    gr.update(visible=next_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
+                )
+            except Exception:
+                logger.exception(
+                    "Search flow failed (user_id=%s, upload_id=%s, upload_count=%s, upload_record_created=%s)",
+                    user_id,
+                    upload_id,
+                    upload_count,
+                    upload_record_created,
+                )
+                effective_upload_id = next_upload_id if upload_record_created else upload_id
+                effective_upload_count = next_upload_count if upload_record_created else upload_count
+                progress_line = f"Uploads completed: {effective_upload_count} of 3-5 recommended"
+                return (
+                    user_id, effective_upload_id, [], [], [], effective_upload_count,
+                    "Search failed for this photo. Tap X to re-upload, then try Find Similar Dresses again.",
+                    "Search failed to load results. Please retry.",
                     gr.update(visible=False),
-                    gr.update(visible=False),
+                    gr.update(visible=False, value=""),
                     "",
                     "[]",
                     gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
                     "",
-                    f"Uploads completed: {new_upload_count} of 3-5 recommended",
-                    f"Uploads completed: {new_upload_count} of 3-5 recommended",
+                    progress_line,
+                    progress_line,
                     gr.update(interactive=True),
-                    gr.update(visible=new_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
+                    gr.update(visible=effective_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
-
-            progress_msg = f"Found **{len(gallery_images)}** similar dresses. Select all matching images, then submit."
-            selection_text = f"Selected: 0 of {len(gallery_images)}"
-            grid_html = generate_results_grid_html(gallery_images, [])
-
-            return (
-                user_id, upload_id, filtered_results, [], gallery_images, new_upload_count,
-                "Search complete. Select similar dresses and submit.",
-                progress_msg,
-                gr.update(visible=True),
-                gr.update(visible=True, value=selection_text),
-                grid_html,
-                "[]",
-                gr.update(visible=True, interactive=False, value="Submit Similar Selections (0)"),
-                "",
-                f"Uploads completed: {new_upload_count} of 3-5 recommended",
-                f"Uploads completed: {new_upload_count} of 3-5 recommended",
-                gr.update(interactive=True),
-                gr.update(visible=new_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
-            )
 
         def on_upload_image_change(image):
             """Enable search only when an upload is present."""
-            return gr.update(interactive=(image is not None))
+            has_image = image is not None
+            return (
+                gr.update(interactive=has_image),
+                gr.update(value="Click to upload", visible=not has_image),
+            )
 
         def on_selection_change(selected_indices_json, gallery_images):
             """Handle selection change from JavaScript."""
@@ -2993,9 +3445,10 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
                     "",
                     "Upload a photo, then tap Find Similar Dresses.",
-                    "Ready for a new upload.",
+                    "",
                     gr.update(value=None),
                     gr.update(interactive=False),
+                    gr.update(value="Click to upload", visible=True),
                 )
 
             selected_set = set(selected_indices)
@@ -3054,9 +3507,10 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
                 "",
                 "Upload another photo, then tap Find Similar Dresses.",
-                "Ready for another upload.",
+                "",
                 gr.update(value=None),
                 gr.update(interactive=False),
+                gr.update(value="Click to upload", visible=True),
             )
 
         def on_finish(session_id):
@@ -3064,12 +3518,41 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             return (
                 gr.update(visible=False),  # Hide main app
                 gr.update(visible=True),   # Show debrief
-                session_id  # Display session ID
+                session_id,  # Display session ID
+                "debrief",  # participant_view_state
             )
 
         def on_close():
             """Handle close button on debrief screen."""
             return gr.update(value="Thank you for participating. You may close this window.")
+
+        def on_open_admin():
+            """Show admin access screen and hide participant UI screens."""
+            return (
+                gr.update(visible=False),  # consent_screen
+                gr.update(visible=False),  # main_app_screen
+                gr.update(visible=False),  # debrief_screen
+                gr.update(visible=True),   # admin_gate_screen
+                gr.update(visible=False),  # admin_panel_screen
+                gr.update(value=""),       # admin_password_input
+                gr.update(value=""),       # admin_unlock_status
+            )
+
+        def on_close_admin(participant_view):
+            """Return from admin area to the last participant-facing screen."""
+            view = (participant_view or "consent").strip().lower()
+            show_consent = view not in {"main", "debrief"}
+            show_main = view == "main"
+            show_debrief = view == "debrief"
+            return (
+                gr.update(visible=show_consent),  # consent_screen
+                gr.update(visible=show_main),     # main_app_screen
+                gr.update(visible=show_debrief),  # debrief_screen
+                gr.update(visible=False),         # admin_gate_screen
+                gr.update(visible=False),         # admin_panel_screen
+                gr.update(value=""),              # admin_password_input
+                gr.update(value=""),              # admin_unlock_status
+            )
 
         def load_admin_tables(max_uploads: int):
             """Load summary + visual admin tables."""
@@ -3150,7 +3633,8 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 user_id_state,
                 consent_screen,
                 main_app_screen,
-                debrief_screen
+                debrief_screen,
+                participant_view_state,
             ]
         )
 
@@ -3175,6 +3659,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 gallery_images_state,
                 upload_count_state,
                 upload_image,
+                upload_click_hint_mobile,
                 status_text,
                 progress_text,
                 selection_instructions,
@@ -3187,6 +3672,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 upload_progress_mobile,
                 search_btn,
                 finish_btn,
+                participant_view_state,
             ],
             show_progress="hidden",
         )
@@ -3194,7 +3680,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
         upload_image.change(
             fn=on_upload_image_change,
             inputs=[upload_image],
-            outputs=[search_btn],
+            outputs=[search_btn, upload_click_hint_mobile],
             show_progress="hidden",
         )
 
@@ -3239,7 +3725,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             outputs=[
                 submit_status, selection_instructions, selection_count, selected_indices_state,
                 selected_indices_input, submit_btn, results_grid_html,
-                progress_text, status_text, upload_image, search_btn
+                progress_text, status_text, upload_image, search_btn, upload_click_hint_mobile
             ],
             show_progress="hidden",
         )
@@ -3264,7 +3750,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
         finish_btn.click(
             fn=on_finish,
             inputs=[session_id_state],
-            outputs=[main_app_screen, debrief_screen, session_id_display]
+            outputs=[main_app_screen, debrief_screen, session_id_display, participant_view_state]
         )
 
         # Close events
@@ -3272,6 +3758,51 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             fn=on_close,
             inputs=[],
             outputs=[close_message]
+        )
+
+        admin_secret_link.click(
+            fn=on_open_admin,
+            inputs=[],
+            outputs=[
+                consent_screen,
+                main_app_screen,
+                debrief_screen,
+                admin_gate_screen,
+                admin_panel_screen,
+                admin_password_input,
+                admin_unlock_status,
+            ],
+            show_progress="hidden",
+        )
+
+        admin_back_btn_gate.click(
+            fn=on_close_admin,
+            inputs=[participant_view_state],
+            outputs=[
+                consent_screen,
+                main_app_screen,
+                debrief_screen,
+                admin_gate_screen,
+                admin_panel_screen,
+                admin_password_input,
+                admin_unlock_status,
+            ],
+            show_progress="hidden",
+        )
+
+        admin_back_btn_panel.click(
+            fn=on_close_admin,
+            inputs=[participant_view_state],
+            outputs=[
+                consent_screen,
+                main_app_screen,
+                debrief_screen,
+                admin_gate_screen,
+                admin_panel_screen,
+                admin_password_input,
+                admin_unlock_status,
+            ],
+            show_progress="hidden",
         )
 
         # Admin unlock events
