@@ -1064,10 +1064,18 @@ button#disagree-btn,
 
 button#disagree-btn,
 #disagree-btn button {
-    border-color: rgba(205, 205, 205, 0.95) !important;
-    background: linear-gradient(160deg, #efefef 0%, #dfdfdf 52%, #cecece 100%) !important;
-    color: #232323 !important;
-    box-shadow: 0 12px 22px rgba(75, 75, 75, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+    border-color: rgba(255, 255, 255, 0.72) !important;
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.60), rgba(247, 247, 247, 0.36)) !important;
+    color: rgba(27, 27, 30, 0.90) !important;
+    box-shadow: 0 12px 24px rgba(72, 72, 78, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.75) !important;
+    backdrop-filter: blur(16px) saturate(145%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(145%) !important;
+}
+
+#disagree-btn,
+#disagree-btn button,
+#disagree-btn * {
+    color: rgba(27, 27, 30, 0.90) !important;
 }
 
 #search-btn button[disabled],
@@ -1130,7 +1138,7 @@ div[data-testid="progress"] {
     width: 100%;
     height: 5px;
     display: none;
-    z-index: 9999;
+    z-index: 10050;
     pointer-events: none;
     background: rgba(212, 107, 59, 0.08);
 }
@@ -1170,7 +1178,7 @@ div[data-testid="progress"] {
 #search-overlay {
     position: fixed;
     inset: 0;
-    z-index: 7000;
+    z-index: 10040;
     display: none;
     align-items: center;
     justify-content: center;
@@ -1240,10 +1248,12 @@ body.dressa-has-results #search-row {
     }
 }
 
-@media (min-width: 769px) {
+@media (min-width: 1025px) {
     #consent-actions {
-        width: auto !important;
-        align-items: flex-start !important;
+        width: 100% !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 12px !important;
     }
 
     #agree-btn,
@@ -1254,7 +1264,9 @@ body.dressa-has-results #search-row {
     #submit-btn {
         width: auto !important;
         max-width: max-content !important;
-        align-self: flex-start !important;
+        align-self: center !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
     }
 
     #agree-btn button,
@@ -1266,20 +1278,40 @@ body.dressa-has-results #search-row {
     #submit-btn > button {
         width: auto !important;
         max-width: max-content !important;
-        min-width: 0 !important;
-        padding: 0 30px !important;
+        min-width: 260px !important;
+        padding: 0 34px !important;
         white-space: nowrap !important;
         display: inline-flex !important;
+        justify-content: center !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
     }
 
     #submit-btn {
+        margin-left: auto !important;
         margin-right: auto !important;
+    }
+
+    #search-row {
+        justify-content: center !important;
+    }
+
+    #agree-btn,
+    #disagree-btn {
+        width: min(420px, 100%) !important;
+        max-width: 420px !important;
+    }
+
+    #agree-btn button,
+    #disagree-btn button {
+        width: 100% !important;
+        max-width: 100% !important;
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     .gradio-container.fill_width {
-        padding: 5px !important;
+        padding: 0 !important;
     }
 
     .main.fillable.app.fill_width,
@@ -1359,11 +1391,17 @@ body.dressa-has-results #search-row {
     justify-content: center;
     font-weight: 700;
     font-size: 12px;
+    line-height: 1;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    z-index: 8;
 }
 
 .selection-badge.visible {
     display: flex;
+}
+
+.result-item.selected .selection-badge {
+    display: flex !important;
 }
 
 @keyframes dressaGridFade {
@@ -1377,7 +1415,7 @@ body.dressa-has-results #search-row {
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     :root {
         --mobile-max-width: 390px;
     }
@@ -1407,6 +1445,11 @@ body.dressa-has-results #search-row {
         overflow: visible !important;
     }
 
+    #main-app-screen {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
     #hero,
     #upload-progress,
     #upload-col h3,
@@ -1429,17 +1472,17 @@ body.dressa-has-results #search-row {
             "upload"
             "search"
             "results";
-        gap: 8px !important;
+        gap: 4px !important;
         align-items: stretch !important;
     }
 
     #upload-col {
         position: sticky !important;
-        top: max(8px, env(safe-area-inset-top)) !important;
+        top: max(0px, env(safe-area-inset-top)) !important;
         z-index: 7200 !important;
         align-self: start !important;
         height: fit-content !important;
-        margin: 8px auto 10px !important;
+        margin: 0 auto 4px !important;
         width: min(352px, calc(100vw - 24px)) !important;
         max-width: 352px !important;
         left: auto !important;
@@ -1754,7 +1797,7 @@ body.dressa-has-results #search-row {
 
     #search-row {
         width: min(352px, calc(100vw - 24px));
-        margin: 4px auto 10px !important;
+        margin: 2px auto 4px !important;
         justify-content: center !important;
     }
 
@@ -1852,7 +1895,7 @@ body.dressa-has-results #search-row {
         width: 100% !important;
         margin: 0 !important;
         box-sizing: border-box;
-        padding: 8px 6px calc(146px + env(safe-area-inset-bottom));
+        padding: 0 6px calc(146px + env(safe-area-inset-bottom));
     }
 
     .results-grid {
@@ -2106,6 +2149,10 @@ body.dressa-has-results #search-row {
 TOGGLE_JS = """
 window.__dressaSelectionOrder = window.__dressaSelectionOrder || [];
 
+function isCompactLayout() {
+    return window.matchMedia('(max-width: 1024px), (hover: none) and (pointer: coarse)').matches;
+}
+
 function updateSelectionBadges() {
     const order = window.__dressaSelectionOrder || [];
     document.querySelectorAll('.result-item').forEach(item => {
@@ -2139,7 +2186,7 @@ function dockMobileSubmitButton() {
         : (submitHost.querySelector('button') || submitHost);
     if (!submitBtn) return;
 
-    if (window.matchMedia('(max-width: 768px)').matches) {
+    if (isCompactLayout()) {
         if (submitBtn.dataset.mobileDocked !== '1') {
             const dockBottom = 'calc(62px + env(safe-area-inset-bottom))';
             submitBtn.style.setProperty('position', 'fixed', 'important');
@@ -2181,7 +2228,7 @@ function syncMobileLabels() {
         }
     }
 
-    if (!window.matchMedia('(max-width: 768px)').matches) {
+    if (!isCompactLayout()) {
         dockMobileSubmitButton();
         return;
     }
@@ -2243,7 +2290,7 @@ function updateSelectionUi(selected) {
 
     const submitBtn = document.querySelector('#submit-btn button') || document.querySelector('#submit-btn');
     if (submitBtn) {
-        if (window.matchMedia('(max-width: 768px)').matches) {
+        if (isCompactLayout()) {
             submitBtn.textContent = `Submit (${selected.length})`;
         } else {
             submitBtn.textContent = `Submit Similar Selections (${selected.length})`;
@@ -2303,7 +2350,7 @@ function enforceMobileMainPadding() {
     const main = document.querySelector('div.main.fillable.app.fill_width');
     if (!main) return;
 
-    if (window.matchMedia('(max-width: 768px)').matches) {
+    if (isCompactLayout()) {
         main.style.setProperty('--size-8', '0px', 'important');
         main.style.setProperty('padding', '0px', 'important');
     } else {
