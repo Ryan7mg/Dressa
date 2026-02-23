@@ -1666,7 +1666,10 @@ body.dressa-has-results #search-row {
     #main-app-screen {
         margin: 0 !important;
         margin-top: 0 !important;
-        padding-top: 0 !important;
+        padding: 1px 1px 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     #hero-wrap {
@@ -1701,33 +1704,37 @@ body.dressa-has-results #search-row {
         gap: 2px !important;
         align-items: stretch !important;
         margin: 0 !important;
-        padding: 0 !important;
+        padding: var(--mobile-upload-offset, 248px) 0 0 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        overflow-x: visible !important;
     }
 
     #upload-col {
-        position: sticky !important;
-        top: 0 !important;
-        z-index: 7200 !important;
+        position: fixed !important;
+        top: 1px !important;
+        left: 1px !important;
+        right: 1px !important;
+        z-index: 7600 !important;
         align-self: start !important;
         height: fit-content !important;
         justify-self: stretch !important;
-        margin: 1px 1px 2px 1px !important;
+        margin: 0 !important;
         width: auto !important;
         max-width: none !important;
-        left: auto !important;
-        right: auto !important;
         transform: none !important;
         box-sizing: border-box;
         background:
-            radial-gradient(circle at 16% 2%, rgba(255, 255, 255, 0.40), rgba(255, 255, 255, 0) 54%),
-            radial-gradient(circle at 100% 0%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 48%),
-            linear-gradient(150deg, rgba(255, 243, 231, 0.40), rgba(247, 189, 144, 0.34));
-        border: 1px solid rgba(255, 255, 255, 0.42);
+            radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0) 56%),
+            radial-gradient(circle at 98% 0%, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 52%),
+            linear-gradient(150deg, rgba(255, 245, 236, 0.20), rgba(247, 189, 144, 0.14));
+        border: 1px solid rgba(255, 255, 255, 0.34);
         border-radius: 22px;
         padding: 12px;
-        box-shadow: 0 14px 26px rgba(88, 47, 25, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.44);
-        backdrop-filter: blur(18px) saturate(145%);
-        -webkit-backdrop-filter: blur(18px) saturate(145%);
+        box-shadow: 0 16px 28px rgba(88, 47, 25, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.42), inset 0 -12px 18px rgba(196, 132, 84, 0.06);
+        backdrop-filter: blur(28px) saturate(162%);
+        -webkit-backdrop-filter: blur(28px) saturate(162%);
         display: grid;
         grid-template-columns: 120px minmax(0, 1fr);
         grid-template-rows: auto auto auto;
@@ -1735,6 +1742,7 @@ body.dressa-has-results #search-row {
         row-gap: 7px;
         align-items: start;
         overflow: hidden !important;
+        isolation: isolate !important;
     }
 
     #upload-col::before {
@@ -1743,9 +1751,9 @@ body.dressa-has-results #search-row {
         left: 10px;
         right: 10px;
         top: 4px;
-        height: 32%;
+        height: 36%;
         border-radius: 18px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.02));
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.02));
         pointer-events: none;
         z-index: 0;
     }
@@ -1855,10 +1863,12 @@ body.dressa-has-results #search-row {
         min-height: 96px !important;
         margin: 0 !important;
         padding: 0 !important;
-        border: 1px solid rgba(252, 252, 252, 0.94) !important;
+        border: 1px solid rgba(255, 255, 255, 0.62) !important;
         outline: 0 !important;
-        background: linear-gradient(168deg, rgba(242, 242, 242, 0.92), rgba(210, 210, 210, 0.80)) !important;
-        box-shadow: 0 12px 22px rgba(88, 47, 25, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.82), inset 0 -8px 18px rgba(160, 160, 160, 0.16) !important;
+        background: linear-gradient(168deg, rgba(244, 244, 244, 0.36), rgba(188, 188, 188, 0.18)) !important;
+        box-shadow: 0 12px 22px rgba(88, 47, 25, 0.16), inset 0 2px 0 rgba(255, 255, 255, 0.62), inset 0 -10px 16px rgba(128, 128, 128, 0.13) !important;
+        backdrop-filter: blur(18px) saturate(162%) !important;
+        -webkit-backdrop-filter: blur(18px) saturate(162%) !important;
         border-radius: 22px !important;
         display: flex !important;
         align-items: center !important;
@@ -1870,12 +1880,12 @@ body.dressa-has-results #search-row {
     #upload-image .upload-container > button .wrap::after {
         content: "";
         position: absolute;
-        left: 8px;
-        right: 8px;
-        top: 7px;
-        height: 34px;
+        left: 6px;
+        right: 6px;
+        top: 6px;
+        height: 40px;
         border-radius: 14px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.08));
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.04));
         pointer-events: none;
     }
 
@@ -1890,9 +1900,9 @@ body.dressa-has-results #search-row {
         background-repeat: no-repeat;
         background-position: center;
         background-size: 100% 100%;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23506a86' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V5'/%3E%3Cpath d='m7 10 5-5 5 5'/%3E%3Cpath d='M5 16v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2'/%3E%3C/svg%3E");
-        opacity: 0.92;
-        filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.58)) drop-shadow(0 8px 12px rgba(80, 106, 134, 0.22));
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V5'/%3E%3Cpath d='m7 10 5-5 5 5'/%3E%3Cpath d='M5 16v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2'/%3E%3C/svg%3E");
+        opacity: 1;
+        filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.84)) drop-shadow(0 10px 16px rgba(0, 0, 0, 0.30));
         pointer-events: none;
         z-index: 1;
     }
@@ -2061,19 +2071,27 @@ body.dressa-has-results #search-row {
 
     #upload-click-hint-mobile {
         grid-column: 1;
-        grid-row: 2;
-        margin: 1px 0 0 !important;
+        grid-row: 1;
+        position: absolute !important;
+        left: 12px !important;
+        top: 102px !important;
+        width: 120px !important;
+        max-width: 120px !important;
+        justify-self: start !important;
+        margin: 0 !important;
         padding: 0 !important;
         border: 0 !important;
         background: transparent !important;
         box-shadow: none !important;
-        color: rgba(62, 54, 48, 0.88) !important;
+        color: rgba(255, 255, 255, 0.94) !important;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.28), 0 1px 0 rgba(255, 255, 255, 0.24) !important;
         font-size: 10px !important;
         line-height: 1.15 !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
         white-space: nowrap !important;
         text-align: center !important;
-        z-index: 1;
+        z-index: 2;
+        pointer-events: none !important;
     }
 
     #upload-click-hint-mobile p {
@@ -2089,19 +2107,21 @@ body.dressa-has-results #search-row {
     }
 
     #search-row {
-        width: calc(100vw - 2px);
-        margin: 1px 1px 2px 1px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 1px 0 2px 0 !important;
         justify-content: center !important;
+        box-sizing: border-box !important;
     }
 
     #search-btn button {
         width: fit-content !important;
-        min-width: 244px !important;
-        max-width: calc(100vw - 22px) !important;
+        min-width: 206px !important;
+        max-width: 84% !important;
         min-height: 52px !important;
         border-radius: 999px !important;
         border: 1px solid rgba(255, 212, 166, 0.88) !important;
-        padding: 0 22px !important;
+        padding: 0 18px !important;
         background: linear-gradient(
             150deg,
             rgba(255, 190, 120, 0.80),
@@ -2152,22 +2172,26 @@ body.dressa-has-results #search-row {
         grid-column: 1 / -1;
         grid-row: 3;
         width: fit-content !important;
-        max-width: calc(100% - 8px) !important;
+        max-width: calc(100% - 12px) !important;
         margin: 6px auto 0 !important;
-        padding: 5px 12px !important;
+        padding: 6px 14px !important;
         border: 0 !important;
+        border-style: none !important;
+        border-width: 0 !important;
+        --block-border-width: 0px !important;
         border-radius: 20px;
-        background: rgba(255, 255, 255, 0.22) !important;
-        box-shadow: 0 6px 14px rgba(92, 48, 25, 0.10) !important;
-        backdrop-filter: blur(8px) !important;
-        -webkit-backdrop-filter: blur(8px) !important;
+        background: linear-gradient(160deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0.15)) !important;
+        box-shadow: 0 10px 18px rgba(92, 48, 25, 0.12) !important;
+        backdrop-filter: blur(12px) saturate(145%) !important;
+        -webkit-backdrop-filter: blur(12px) saturate(145%) !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         font-size: 11px;
-        color: #2b2b2b !important;
-        font-weight: 600;
+        color: #2b1f16 !important;
+        font-weight: 700;
         line-height: 1.2;
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.42), 0 2px 8px rgba(90, 45, 20, 0.18);
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
@@ -2183,9 +2207,9 @@ body.dressa-has-results #search-row {
         border: none !important;
         box-shadow: none !important;
         padding: 0 !important;
-        margin: 0 auto !important;
-        width: min(var(--mobile-max-width), calc(100vw - 8px)) !important;
-        max-width: var(--mobile-max-width);
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
         position: relative !important;
         overflow: visible !important;
     }
@@ -2247,7 +2271,7 @@ body.dressa-has-results #search-row {
         display: flex;
     }
 
-    #submit-btn {
+    #submit-btn:not(button) {
         position: fixed !important;
         left: 50% !important;
         right: auto !important;
@@ -2258,7 +2282,26 @@ body.dressa-has-results #search-row {
         margin: 0 !important;
         text-align: center !important;
         z-index: 6505 !important;
-        pointer-events: none !important;
+        pointer-events: auto !important;
+        overflow: visible !important;
+        display: inline-flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        box-sizing: border-box !important;
+        padding: 0 !important;
+    }
+
+    button#submit-btn {
+        position: fixed !important;
+        left: 50% !important;
+        right: auto !important;
+        top: auto !important;
+        transform: translateX(-50%) !important;
+        bottom: calc(62px + env(safe-area-inset-bottom)) !important;
+        width: auto !important;
+        margin: 0 !important;
+        z-index: 6506 !important;
+        pointer-events: auto !important;
     }
 
     button#submit-btn,
@@ -2274,19 +2317,19 @@ body.dressa-has-results #search-row {
         min-height: 52px !important;
         border-radius: 999px !important;
         width: auto !important;
-        min-width: 228px !important;
-        max-width: calc(100vw - 18px) !important;
-        padding: 0 38px !important;
+        min-width: 0 !important;
+        max-width: calc(100vw - 20px) !important;
+        padding: 0 10px !important;
         border: 1px solid rgba(255, 222, 190, 0.72) !important;
         background: linear-gradient(
             150deg,
-            rgba(255, 190, 120, 0.56),
-            rgba(238, 137, 34, 0.68) 55%,
-            rgba(224, 124, 24, 0.60)
+            rgba(255, 190, 120, 0.26),
+            rgba(238, 137, 34, 0.34) 55%,
+            rgba(224, 124, 24, 0.28)
         ) !important;
-        backdrop-filter: blur(14px) saturate(145%) !important;
-        -webkit-backdrop-filter: blur(14px) saturate(145%) !important;
-        box-shadow: 0 18px 26px rgba(224, 128, 27, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
+        backdrop-filter: blur(26px) saturate(158%) !important;
+        -webkit-backdrop-filter: blur(26px) saturate(158%) !important;
+        box-shadow: 0 14px 22px rgba(224, 128, 27, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.46) !important;
         pointer-events: auto !important;
         z-index: 6506 !important;
     }
@@ -2523,11 +2566,27 @@ function resetSelectionOrder() {
 
 window.__dressa_reset_selection_order = resetSelectionOrder;
 
+function updateMobileUploadOffset() {
+    if (!isCompactLayout()) {
+        document.documentElement.style.removeProperty('--mobile-upload-offset');
+        return;
+    }
+
+    const uploadCol = document.getElementById('upload-col');
+    if (!uploadCol) return;
+
+    const height = Math.ceil(uploadCol.getBoundingClientRect().height || uploadCol.offsetHeight || 0);
+    if (height > 0) {
+        document.documentElement.style.setProperty('--mobile-upload-offset', `${height + 4}px`);
+    }
+}
+
 function dockMobileSubmitButton() {
     const submitHost = document.getElementById('submit-btn');
     if (!submitHost) return;
+    const submitHostIsButton = submitHost.matches('button');
 
-    const submitBtn = submitHost.matches('button')
+    const submitBtn = submitHostIsButton
         ? submitHost
         : (submitHost.querySelector('button') || null);
 
@@ -2553,7 +2612,11 @@ function dockMobileSubmitButton() {
         submitHost.style.setProperty('width', 'auto', 'important');
         submitHost.style.setProperty('text-align', 'center', 'important');
         submitHost.style.setProperty('overflow', 'visible', 'important');
-        submitHost.style.setProperty('pointer-events', submitHost.matches('button') ? 'auto' : 'none', 'important');
+        submitHost.style.setProperty('display', 'inline-flex', 'important');
+        submitHost.style.setProperty('justify-content', 'center', 'important');
+        submitHost.style.setProperty('align-items', 'center', 'important');
+        submitHost.style.setProperty('pointer-events', 'auto', 'important');
+        submitHost.style.setProperty('text-align', 'center', 'important');
         submitHost.dataset.mobileDocked = '1';
 
         if (submitBtn && submitBtn !== submitHost) {
@@ -2565,6 +2628,7 @@ function dockMobileSubmitButton() {
             submitBtn.style.setProperty('transform', 'none', 'important');
             submitBtn.style.setProperty('margin', '0 auto', 'important');
             submitBtn.style.setProperty('width', 'auto', 'important');
+            submitBtn.style.setProperty('max-width', 'calc(100vw - 20px)', 'important');
             submitBtn.style.setProperty('pointer-events', 'auto', 'important');
             submitBtn.style.setProperty('z-index', '6506', 'important');
         }
@@ -2590,6 +2654,9 @@ function dockMobileSubmitButton() {
             submitHost.style.removeProperty('margin');
             submitHost.style.removeProperty('width');
             submitHost.style.removeProperty('text-align');
+            submitHost.style.removeProperty('display');
+            submitHost.style.removeProperty('justify-content');
+            submitHost.style.removeProperty('align-items');
             submitHost.style.removeProperty('overflow');
             submitHost.style.removeProperty('pointer-events');
 
@@ -2630,6 +2697,7 @@ function syncMobileLabels() {
     updateSelectionBadges();
 
     if (!isCompactLayout()) {
+        updateMobileUploadOffset();
         dockMobileSubmitButton();
         return;
     }
@@ -2644,6 +2712,7 @@ function syncMobileLabels() {
         submitBtn.disabled = selectedCount === 0 || resultCount === 0;
         submitBtn.setAttribute('aria-disabled', String(submitBtn.disabled));
     }
+    updateMobileUploadOffset();
     dockMobileSubmitButton();
 }
 
@@ -2703,6 +2772,7 @@ function updateSelectionUi(selected) {
         submitBtn.disabled = selected.length === 0 || resultCount === 0;
         submitBtn.setAttribute('aria-disabled', String(submitBtn.disabled));
     }
+    updateMobileUploadOffset();
     dockMobileSubmitButton();
 
     const countLabel = document.getElementById('selection-count');
@@ -2781,10 +2851,12 @@ if (document.readyState === 'loading') {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', attachResultsObserver, { once: true });
     document.addEventListener('DOMContentLoaded', syncMobileLabels, { once: true });
+    document.addEventListener('DOMContentLoaded', updateMobileUploadOffset, { once: true });
     document.addEventListener('DOMContentLoaded', dockMobileSubmitButton, { once: true });
 } else {
     attachResultsObserver();
     syncMobileLabels();
+    updateMobileUploadOffset();
     dockMobileSubmitButton();
 }
 
@@ -2793,6 +2865,8 @@ if (!window.__dressaMainPaddingWatcherAttached) {
     window.addEventListener('orientationchange', enforceMobileMainPadding, { passive: true });
     window.addEventListener('resize', syncMobileLabels, { passive: true });
     window.addEventListener('orientationchange', syncMobileLabels, { passive: true });
+    window.addEventListener('resize', updateMobileUploadOffset, { passive: true });
+    window.addEventListener('orientationchange', updateMobileUploadOffset, { passive: true });
     window.addEventListener('resize', dockMobileSubmitButton, { passive: true });
     window.addEventListener('orientationchange', dockMobileSubmitButton, { passive: true });
     window.__dressaMainPaddingWatcherAttached = true;
