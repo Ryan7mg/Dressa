@@ -1374,6 +1374,14 @@ body:not(.dressa-main-active) #submit-btn {
     display: none !important;
 }
 
+body:not(.dressa-consent-active) #consent-actions {
+    display: none !important;
+}
+
+body.dressa-consent-active #consent-actions {
+    display: flex !important;
+}
+
 #search-overlay .search-overlay-card {
     background: linear-gradient(170deg, rgba(255, 255, 255, 0.95), rgba(255, 243, 231, 0.9));
     border: 1px solid rgba(255, 230, 206, 0.95);
@@ -2716,6 +2724,45 @@ function isMainAppVisible() {
     return rect.width > 0 && rect.height > 0;
 }
 
+function isConsentVisible() {
+    const consent = document.getElementById('consent-screen');
+    if (!consent) return false;
+    const style = window.getComputedStyle(consent);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+    const rect = consent.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+}
+
+function dockConsentActions() {
+    const actions = document.getElementById('consent-actions');
+    if (!actions) return;
+
+    const consentVisible = isConsentVisible();
+    document.body.classList.toggle('dressa-consent-active', consentVisible);
+
+    if (!window.__dressaConsentOriginalParent) {
+        window.__dressaConsentOriginalParent = actions.parentElement || null;
+        window.__dressaConsentOriginalNextSibling = actions.nextSibling || null;
+    }
+
+    if (!consentVisible) {
+        actions.style.setProperty('display', 'none', 'important');
+        return;
+    }
+
+    if (actions.parentElement !== document.body) {
+        document.body.appendChild(actions);
+    }
+
+    actions.style.setProperty('position', 'fixed', 'important');
+    actions.style.setProperty('left', '0', 'important');
+    actions.style.setProperty('right', '0', 'important');
+    actions.style.setProperty('bottom', 'max(8px, env(safe-area-inset-bottom))', 'important');
+    actions.style.setProperty('width', '100%', 'important');
+    actions.style.setProperty('z-index', '10020', 'important');
+    actions.style.setProperty('display', 'flex', 'important');
+}
+
 function scrollToResultsStart() {
     if (!isCompactLayout()) return;
     if (!isMainAppVisible()) return;
@@ -2846,6 +2893,7 @@ function syncMobileLabels() {
     const mainVisible = isMainAppVisible();
     document.body.classList.toggle('dressa-main-active', mainVisible);
     document.body.classList.toggle('dressa-has-results', mainVisible && resultCount > 0);
+    dockConsentActions();
     if (resultCount === 0) {
         window.__dressaSelectionOrder = [];
     }
@@ -2861,6 +2909,7 @@ function syncMobileLabels() {
 
     if (!isCompactLayout()) {
         updateMobileUploadOffset();
+        dockConsentActions();
         dockMobileSubmitButton();
         return;
     }
@@ -2876,6 +2925,7 @@ function syncMobileLabels() {
         submitBtn.setAttribute('aria-disabled', String(submitBtn.disabled));
     }
     updateMobileUploadOffset();
+    dockConsentActions();
     dockMobileSubmitButton();
 }
 
@@ -2926,6 +2976,7 @@ function updateSelectionUi(selected) {
         }
     }
     updateSelectionBadges();
+    dockConsentActions();
 
     const submitBtn = document.querySelector('#submit-btn button') || document.querySelector('#submit-btn');
     if (submitBtn) {
@@ -2938,6 +2989,7 @@ function updateSelectionUi(selected) {
         submitBtn.setAttribute('aria-disabled', String(submitBtn.disabled));
     }
     updateMobileUploadOffset();
+    dockConsentActions();
     dockMobileSubmitButton();
 
     const countLabel = document.getElementById('selection-count');
@@ -3033,11 +3085,29 @@ function attachMainScreenObserver() {
         window.requestAnimationFrame(() => {
             syncMobileLabels();
             updateMobileUploadOffset();
+            dockConsentActions();
             dockMobileSubmitButton();
         });
     });
     observer.observe(mainScreen, { attributes: true, attributeFilter: ['style', 'class'] });
     window.__dressaMainScreenObserverAttached = true;
+}
+
+function attachConsentScreenObserver() {
+    if (window.__dressaConsentScreenObserverAttached) return;
+    const consentScreen = document.getElementById('consent-screen');
+    if (!consentScreen) {
+        setTimeout(attachConsentScreenObserver, 300);
+        return;
+    }
+
+    const observer = new MutationObserver(() => {
+        window.requestAnimationFrame(() => {
+            dockConsentActions();
+        });
+    });
+    observer.observe(consentScreen, { attributes: true, attributeFilter: ['style', 'class'] });
+    window.__dressaConsentScreenObserverAttached = true;
 }
 
 function enforceMobileMainPadding() {
@@ -3063,15 +3133,19 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', attachResultsObserver, { once: true });
     document.addEventListener('DOMContentLoaded', attachUploadColObserver, { once: true });
     document.addEventListener('DOMContentLoaded', attachMainScreenObserver, { once: true });
+    document.addEventListener('DOMContentLoaded', attachConsentScreenObserver, { once: true });
     document.addEventListener('DOMContentLoaded', syncMobileLabels, { once: true });
     document.addEventListener('DOMContentLoaded', updateMobileUploadOffset, { once: true });
+    document.addEventListener('DOMContentLoaded', dockConsentActions, { once: true });
     document.addEventListener('DOMContentLoaded', dockMobileSubmitButton, { once: true });
 } else {
     attachResultsObserver();
     attachUploadColObserver();
     attachMainScreenObserver();
+    attachConsentScreenObserver();
     syncMobileLabels();
     updateMobileUploadOffset();
+    dockConsentActions();
     dockMobileSubmitButton();
 }
 
@@ -3082,6 +3156,8 @@ if (!window.__dressaMainPaddingWatcherAttached) {
     window.addEventListener('orientationchange', syncMobileLabels, { passive: true });
     window.addEventListener('resize', updateMobileUploadOffset, { passive: true });
     window.addEventListener('orientationchange', updateMobileUploadOffset, { passive: true });
+    window.addEventListener('resize', dockConsentActions, { passive: true });
+    window.addEventListener('orientationchange', dockConsentActions, { passive: true });
     window.addEventListener('resize', dockMobileSubmitButton, { passive: true });
     window.addEventListener('orientationchange', dockMobileSubmitButton, { passive: true });
     window.__dressaMainPaddingWatcherAttached = true;
