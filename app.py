@@ -753,6 +753,35 @@ body, .gradio-container {
     overflow-x: hidden;
 }
 
+html,
+body {
+    color-scheme: light !important;
+}
+
+.gradio-container {
+    --body-text-color: #191816 !important;
+    --block-title-text-color: #191816 !important;
+    --block-label-text-color: #191816 !important;
+    --input-text-color: #191816 !important;
+    --color-text: #191816 !important;
+    color: #191816 !important;
+}
+
+#consent-screen,
+#consent-screen .gr-markdown,
+#consent-screen .gr-markdown h1,
+#consent-screen .gr-markdown h2,
+#consent-screen .gr-markdown h3,
+#consent-screen .gr-markdown p,
+#consent-screen .gr-markdown li,
+#consent-screen .gr-markdown strong {
+    color: #191816 !important;
+}
+
+#consent-screen .gr-markdown a {
+    color: #0b5bd3 !important;
+}
+
 .gradio-container {
     width: 100% !important;
     max-width: none !important;
