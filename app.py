@@ -789,7 +789,8 @@ body, .gradio-container {
     grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
     grid-template-areas:
         "upload results"
-        "search results";
+        "search results"
+        "finish results";
     gap: 26px;
     align-items: flex-start;
 }
@@ -807,6 +808,18 @@ body, .gradio-container {
 }
 
 #search-row #search-btn {
+    width: min(360px, 100%);
+}
+
+#finish-row {
+    grid-area: finish;
+    margin: 0;
+    justify-content: flex-start;
+    align-self: start;
+    width: 100%;
+}
+
+#finish-row #finish-btn {
     width: min(360px, 100%);
 }
 
@@ -1309,6 +1322,10 @@ body.dressa-has-results #search-row {
     display: none !important;
 }
 
+body:not(.dressa-main-active) #submit-btn {
+    display: none !important;
+}
+
 #search-overlay .search-overlay-card {
     background: linear-gradient(170deg, rgba(255, 255, 255, 0.95), rgba(255, 243, 231, 0.9));
     border: 1px solid rgba(255, 230, 206, 0.95);
@@ -1562,6 +1579,27 @@ body.dressa-has-results #search-row {
         -webkit-backdrop-filter: none !important;
         box-shadow: none !important;
     }
+
+    #consent-actions #agree-btn,
+    #consent-actions #disagree-btn {
+        width: min(300px, calc(100vw - 20px)) !important;
+        min-width: min(300px, calc(100vw - 20px)) !important;
+        max-width: min(300px, calc(100vw - 20px)) !important;
+        margin: 0 auto !important;
+        display: flex !important;
+        justify-content: center !important;
+    }
+
+    #consent-actions button#agree-btn,
+    #consent-actions button#disagree-btn,
+    #consent-actions #agree-btn button,
+    #consent-actions #disagree-btn button {
+        width: min(300px, calc(100vw - 20px)) !important;
+        min-width: min(300px, calc(100vw - 20px)) !important;
+        max-width: min(300px, calc(100vw - 20px)) !important;
+        padding: 0 50px !important;
+        white-space: nowrap !important;
+    }
 }
 
 #upload-progress-mobile {
@@ -1666,7 +1704,7 @@ body.dressa-has-results #search-row {
     #main-app-screen {
         margin: 0 !important;
         margin-top: 0 !important;
-        padding: 1px 1px 0 !important;
+        padding: 0 1px 0 !important;
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
@@ -1700,8 +1738,9 @@ body.dressa-has-results #search-row {
         grid-template-areas:
             "upload"
             "search"
+            "finish"
             "results";
-        gap: 2px !important;
+        gap: 1px !important;
         align-items: stretch !important;
         margin: 0 !important;
         padding: var(--mobile-upload-offset, 248px) 0 0 0 !important;
@@ -1713,7 +1752,7 @@ body.dressa-has-results #search-row {
 
     #upload-col {
         position: fixed !important;
-        top: 1px !important;
+        top: 0 !important;
         left: 1px !important;
         right: 1px !important;
         z-index: 7600 !important;
@@ -1863,12 +1902,12 @@ body.dressa-has-results #search-row {
         min-height: 96px !important;
         margin: 0 !important;
         padding: 0 !important;
-        border: 1px solid rgba(255, 255, 255, 0.62) !important;
+        border: 0 !important;
         outline: 0 !important;
-        background: linear-gradient(168deg, rgba(244, 244, 244, 0.36), rgba(188, 188, 188, 0.18)) !important;
-        box-shadow: 0 12px 22px rgba(88, 47, 25, 0.16), inset 0 2px 0 rgba(255, 255, 255, 0.62), inset 0 -10px 16px rgba(128, 128, 128, 0.13) !important;
-        backdrop-filter: blur(18px) saturate(162%) !important;
-        -webkit-backdrop-filter: blur(18px) saturate(162%) !important;
+        background: linear-gradient(168deg, rgba(246, 246, 246, 0.24), rgba(182, 182, 182, 0.12)) !important;
+        box-shadow: 0 14px 24px rgba(88, 47, 25, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.44), inset 0 -12px 18px rgba(112, 112, 112, 0.12) !important;
+        backdrop-filter: blur(22px) saturate(168%) !important;
+        -webkit-backdrop-filter: blur(22px) saturate(168%) !important;
         border-radius: 22px !important;
         display: flex !important;
         align-items: center !important;
@@ -1902,7 +1941,7 @@ body.dressa-has-results #search-row {
         background-size: 100% 100%;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V5'/%3E%3Cpath d='m7 10 5-5 5 5'/%3E%3Cpath d='M5 16v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2'/%3E%3C/svg%3E");
         opacity: 1;
-        filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.84)) drop-shadow(0 10px 16px rgba(0, 0, 0, 0.30));
+        filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.92)) drop-shadow(0 16px 24px rgba(0, 0, 0, 0.48));
         pointer-events: none;
         z-index: 1;
     }
@@ -2074,9 +2113,9 @@ body.dressa-has-results #search-row {
         grid-row: 1;
         position: absolute !important;
         left: 12px !important;
-        top: 102px !important;
-        width: 120px !important;
-        max-width: 120px !important;
+        top: 104px !important;
+        width: 96px !important;
+        max-width: 96px !important;
         justify-self: start !important;
         margin: 0 !important;
         padding: 0 !important;
@@ -2109,19 +2148,27 @@ body.dressa-has-results #search-row {
     #search-row {
         width: 100% !important;
         max-width: 100% !important;
-        margin: 1px 0 2px 0 !important;
+        margin: 0 !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
+    }
+
+    #finish-row {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
         justify-content: center !important;
         box-sizing: border-box !important;
     }
 
     #search-btn button {
-        width: fit-content !important;
-        min-width: 206px !important;
-        max-width: 84% !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: calc(100vw - 20px) !important;
         min-height: 52px !important;
         border-radius: 999px !important;
         border: 1px solid rgba(255, 212, 166, 0.88) !important;
-        padding: 0 18px !important;
+        padding: 0 50px !important;
         background: linear-gradient(
             150deg,
             rgba(255, 190, 120, 0.80),
@@ -2202,6 +2249,21 @@ body.dressa-has-results #search-row {
         display: none !important;
     }
 
+    #close-btn,
+    button#close-btn,
+    #close-btn button,
+    #finish-btn,
+    button#finish-btn,
+    #finish-btn button {
+        width: auto !important;
+        min-width: min(280px, calc(100vw - 20px)) !important;
+        max-width: calc(100vw - 20px) !important;
+        padding: 0 50px !important;
+        margin: 0 auto !important;
+        display: inline-flex !important;
+        justify-content: center !important;
+    }
+
     #results-col {
         background: transparent !important;
         border: none !important;
@@ -2229,20 +2291,33 @@ body.dressa-has-results #search-row {
     }
 
     .results-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
+        display: block;
+        column-count: 2;
+        column-gap: 8px;
         padding: 0;
-        column-count: unset;
         animation: dressaGridFade 0.35s ease;
     }
 
     .result-item {
+        display: inline-block !important;
+        width: 100% !important;
+        break-inside: avoid !important;
+        -webkit-column-break-inside: avoid !important;
+        page-break-inside: avoid !important;
         border: none !important;
         border-radius: 22px !important;
         box-shadow: 0 8px 20px rgba(97, 51, 29, 0.16) !important;
         background: #fff !important;
-        margin: 0 !important;
+        margin: 0 0 8px !important;
+        overflow: hidden !important;
+    }
+
+    .result-item img {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        object-fit: contain !important;
     }
 
     .result-item.selected {
@@ -2317,15 +2392,15 @@ body.dressa-has-results #search-row {
         min-height: 52px !important;
         border-radius: 999px !important;
         width: auto !important;
-        min-width: 0 !important;
+        min-width: min(280px, calc(100vw - 20px)) !important;
         max-width: calc(100vw - 20px) !important;
-        padding: 0 10px !important;
+        padding: 0 50px !important;
         border: 1px solid rgba(255, 222, 190, 0.72) !important;
         background: linear-gradient(
             150deg,
-            rgba(255, 190, 120, 0.26),
-            rgba(238, 137, 34, 0.34) 55%,
-            rgba(224, 124, 24, 0.28)
+            rgba(255, 190, 120, 0.18),
+            rgba(238, 137, 34, 0.24) 55%,
+            rgba(224, 124, 24, 0.20)
         ) !important;
         backdrop-filter: blur(26px) saturate(158%) !important;
         -webkit-backdrop-filter: blur(26px) saturate(158%) !important;
@@ -2374,12 +2449,14 @@ body.dressa-has-results #search-row {
         padding: 0 0 env(safe-area-inset-bottom);
         min-height: 52px;
         border-radius: 22px 22px 0 0 !important;
-        background: rgba(255, 255, 255, 0.95) !important;
+        background: rgba(255, 255, 255, 0.985) !important;
         border: none !important;
-        box-shadow: 0 -8px 18px rgba(95, 54, 28, 0.16) !important;
-        color: #e46339 !important;
-        font-weight: 700 !important;
-        font-size: 18px !important;
+        box-shadow: 0 -6px 14px rgba(95, 54, 28, 0.10) !important;
+        color: #db5f37 !important;
+        font-family: "Fraunces", "Space Grotesk", serif !important;
+        font-weight: 500 !important;
+        font-size: 15px !important;
+        letter-spacing: 0.02em !important;
         text-align: center !important;
         z-index: 6400;
     }
@@ -2577,18 +2654,46 @@ function updateMobileUploadOffset() {
 
     const height = Math.ceil(uploadCol.getBoundingClientRect().height || uploadCol.offsetHeight || 0);
     if (height > 0) {
-        document.documentElement.style.setProperty('--mobile-upload-offset', `${height + 4}px`);
+        document.documentElement.style.setProperty('--mobile-upload-offset', `${height + 2}px`);
     }
+}
+
+function isMainAppVisible() {
+    const main = document.getElementById('main-app-screen');
+    if (!main) return false;
+    const style = window.getComputedStyle(main);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+    const rect = main.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+}
+
+function scrollToResultsStart() {
+    if (!isCompactLayout()) return;
+    if (!isMainAppVisible()) return;
+    const container = document.getElementById('results-grid-container');
+    if (!container) return;
+
+    const uploadCol = document.getElementById('upload-col');
+    const uploadHeight = Math.ceil(uploadCol?.getBoundingClientRect().height || 0);
+    const containerTop = container.getBoundingClientRect().top + window.scrollY;
+    const targetTop = Math.max(0, containerTop - uploadHeight - 6);
+    window.scrollTo({ top: targetTop, behavior: 'smooth' });
 }
 
 function dockMobileSubmitButton() {
     const submitHost = document.getElementById('submit-btn');
     if (!submitHost) return;
     const submitHostIsButton = submitHost.matches('button');
+    const mainVisible = isMainAppVisible();
 
     const submitBtn = submitHostIsButton
         ? submitHost
         : (submitHost.querySelector('button') || null);
+
+    if (!mainVisible) {
+        submitHost.style.setProperty('display', 'none', 'important');
+        return;
+    }
 
     if (!window.__dressaSubmitOriginalParent) {
         window.__dressaSubmitOriginalParent = submitHost.parentElement || null;
@@ -2616,6 +2721,8 @@ function dockMobileSubmitButton() {
         submitHost.style.setProperty('justify-content', 'center', 'important');
         submitHost.style.setProperty('align-items', 'center', 'important');
         submitHost.style.setProperty('pointer-events', 'auto', 'important');
+        submitHost.style.setProperty('padding', '0 50px', 'important');
+        submitHost.style.setProperty('max-width', 'calc(100vw - 20px)', 'important');
         submitHost.style.setProperty('text-align', 'center', 'important');
         submitHost.dataset.mobileDocked = '1';
 
@@ -2629,6 +2736,7 @@ function dockMobileSubmitButton() {
             submitBtn.style.setProperty('margin', '0 auto', 'important');
             submitBtn.style.setProperty('width', 'auto', 'important');
             submitBtn.style.setProperty('max-width', 'calc(100vw - 20px)', 'important');
+            submitBtn.style.setProperty('padding', '0 50px', 'important');
             submitBtn.style.setProperty('pointer-events', 'auto', 'important');
             submitBtn.style.setProperty('z-index', '6506', 'important');
         }
@@ -2657,6 +2765,8 @@ function dockMobileSubmitButton() {
             submitHost.style.removeProperty('display');
             submitHost.style.removeProperty('justify-content');
             submitHost.style.removeProperty('align-items');
+            submitHost.style.removeProperty('padding');
+            submitHost.style.removeProperty('max-width');
             submitHost.style.removeProperty('overflow');
             submitHost.style.removeProperty('pointer-events');
 
@@ -2669,6 +2779,8 @@ function dockMobileSubmitButton() {
                 submitBtn.style.removeProperty('transform');
                 submitBtn.style.removeProperty('margin');
                 submitBtn.style.removeProperty('width');
+                submitBtn.style.removeProperty('max-width');
+                submitBtn.style.removeProperty('padding');
                 submitBtn.style.removeProperty('pointer-events');
                 submitBtn.style.removeProperty('z-index');
             }
@@ -2682,13 +2794,15 @@ window.__dressa_dock_mobile_submit = dockMobileSubmitButton;
 
 function syncMobileLabels() {
     const resultCount = document.querySelectorAll('.result-item').length;
-    document.body.classList.toggle('dressa-has-results', resultCount > 0);
+    const mainVisible = isMainAppVisible();
+    document.body.classList.toggle('dressa-main-active', mainVisible);
+    document.body.classList.toggle('dressa-has-results', mainVisible && resultCount > 0);
     if (resultCount === 0) {
         window.__dressaSelectionOrder = [];
     }
     const submitHost = document.getElementById('submit-btn');
     if (submitHost) {
-        if (resultCount === 0) {
+        if (!mainVisible || resultCount === 0) {
             submitHost.style.setProperty('display', 'none', 'important');
         } else {
             submitHost.style.removeProperty('display');
@@ -2748,13 +2862,15 @@ function syncSelectedIndicesToInput() {
 
 function updateSelectionUi(selected) {
     const resultCount = document.querySelectorAll('.result-item').length;
-    document.body.classList.toggle('dressa-has-results', resultCount > 0);
+    const mainVisible = isMainAppVisible();
+    document.body.classList.toggle('dressa-main-active', mainVisible);
+    document.body.classList.toggle('dressa-has-results', mainVisible && resultCount > 0);
     if (resultCount === 0) {
         window.__dressaSelectionOrder = [];
     }
     const submitHost = document.getElementById('submit-btn');
     if (submitHost) {
-        if (resultCount === 0) {
+        if (!mainVisible || resultCount === 0) {
             submitHost.style.setProperty('display', 'none', 'important');
         } else {
             submitHost.style.removeProperty('display');
@@ -2824,9 +2940,55 @@ function attachResultsObserver() {
         lastResultItemCount = currentCount;
         window.__dressa_reset_selection_order?.();
         syncMobileLabels();
+        if (currentCount > 0) {
+            window.requestAnimationFrame(() => {
+                updateMobileUploadOffset();
+                scrollToResultsStart();
+            });
+        }
     });
     observer.observe(container, { childList: true, subtree: false });
     window.__dressaResultsObserverAttached = true;
+}
+
+function attachUploadColObserver() {
+    if (window.__dressaUploadColObserverAttached) return;
+    const uploadCol = document.getElementById('upload-col');
+    if (!uploadCol) {
+        setTimeout(attachUploadColObserver, 300);
+        return;
+    }
+
+    if (typeof ResizeObserver === 'undefined') {
+        window.__dressaUploadColObserverAttached = true;
+        return;
+    }
+
+    const observer = new ResizeObserver(() => {
+        updateMobileUploadOffset();
+        syncMobileLabels();
+    });
+    observer.observe(uploadCol);
+    window.__dressaUploadColObserverAttached = true;
+}
+
+function attachMainScreenObserver() {
+    if (window.__dressaMainScreenObserverAttached) return;
+    const mainScreen = document.getElementById('main-app-screen');
+    if (!mainScreen) {
+        setTimeout(attachMainScreenObserver, 300);
+        return;
+    }
+
+    const observer = new MutationObserver(() => {
+        window.requestAnimationFrame(() => {
+            syncMobileLabels();
+            updateMobileUploadOffset();
+            dockMobileSubmitButton();
+        });
+    });
+    observer.observe(mainScreen, { attributes: true, attributeFilter: ['style', 'class'] });
+    window.__dressaMainScreenObserverAttached = true;
 }
 
 function enforceMobileMainPadding() {
@@ -2850,11 +3012,15 @@ if (document.readyState === 'loading') {
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', attachResultsObserver, { once: true });
+    document.addEventListener('DOMContentLoaded', attachUploadColObserver, { once: true });
+    document.addEventListener('DOMContentLoaded', attachMainScreenObserver, { once: true });
     document.addEventListener('DOMContentLoaded', syncMobileLabels, { once: true });
     document.addEventListener('DOMContentLoaded', updateMobileUploadOffset, { once: true });
     document.addEventListener('DOMContentLoaded', dockMobileSubmitButton, { once: true });
 } else {
     attachResultsObserver();
+    attachUploadColObserver();
+    attachMainScreenObserver();
     syncMobileLabels();
     updateMobileUploadOffset();
     dockMobileSubmitButton();
@@ -3111,9 +3277,6 @@ University of Glasgow - School of Computing Science
                     )
                     status_text = gr.Markdown("", elem_id="status-text")
 
-                    # Finish button (appears after minimum uploads)
-                    finish_btn = gr.Button("Finish Study", variant="secondary", visible=False, elem_id="finish-btn")
-
                     # Submit button (desktop: sits in upload column; mobile: JS docks fixed)
                     submit_btn = gr.Button(
                         "Submit Similar Selections (0)",
@@ -3131,6 +3294,10 @@ University of Glasgow - School of Computing Science
                         elem_id="search-btn",
                         interactive=False,
                     )
+
+                # Finish button (appears after minimum uploads)
+                with gr.Row(elem_id="finish-row"):
+                    finish_btn = gr.Button("Finish Study", variant="secondary", visible=False, elem_id="finish-btn")
 
                 # Right column: Results
                 with gr.Column(scale=2, min_width=0, elem_id="results-col"):
@@ -3751,11 +3918,19 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             show_progress="hidden",
         )
 
-        upload_image.change(
+        upload_change_dep = upload_image.change(
             fn=on_upload_image_change,
             inputs=[upload_image],
             outputs=[search_btn, upload_click_hint_mobile],
             show_progress="hidden",
+        )
+        upload_change_dep.success(
+            fn=None,
+            inputs=[],
+            outputs=[],
+            show_progress="hidden",
+            queue=False,
+            js="() => { window.__dressa_sync_mobile_labels?.(); }",
         )
 
         # Search events
