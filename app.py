@@ -977,55 +977,9 @@ h1, h2, h3 {
     box-shadow: 0 0 0 3px rgba(31, 111, 91, 0.22), 0 14px 32px rgba(14, 43, 36, 0.25);
 }
 
-.result-item .select-chip {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 34px;
-    height: 34px;
-    background: rgba(24, 37, 35, 0.56);
-    border-radius: 50%;
-    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22);
-    border: 1px solid rgba(255, 255, 255, 0.36);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.result-item .select-chip::before {
-    content: '';
-    width: 9px;
-    height: 9px;
-    border-top: 2px solid #fff;
-    border-right: 2px solid #fff;
-    transform: rotate(45deg) translate(-1px, 1px);
-}
-
-.result-item.selected .select-chip {
-    background: linear-gradient(145deg, #2d8a74, #236b5b);
-    border-color: rgba(255, 255, 255, 0.44);
-}
-
-.result-item.selected .select-chip::before {
-    width: 8px;
-    height: 12px;
-    border-top: none;
-    border-right: 2px solid #fff;
-    border-bottom: 2px solid #fff;
-    transform: rotate(40deg) translate(-1px, -1px);
-}
-
+.result-item .select-chip,
 .result-item .index-badge {
-    position: absolute;
-    bottom: 8px;
-    left: 8px;
-    background: rgba(12, 12, 12, 0.56);
-    color: white;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: none !important;
 }
 
 #submit-btn button,
@@ -1381,27 +1335,24 @@ body.dressa-has-results #search-row {
     position: absolute;
     top: 8px;
     right: 8px;
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: #f5a623;
-    color: #fff;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: linear-gradient(155deg, #ffb14f, #f07f21);
+    color: #fff !important;
     display: none;
     align-items: center;
     justify-content: center;
     font-weight: 700;
     font-size: 12px;
     line-height: 1;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 5px 12px rgba(150, 82, 25, 0.35);
     z-index: 8;
 }
 
 .selection-badge.visible {
     display: flex;
-}
-
-.result-item.selected .selection-badge {
-    display: flex !important;
 }
 
 @keyframes dressaGridFade {
@@ -1929,6 +1880,10 @@ body.dressa-has-results #search-row {
         height: 24px;
         border-radius: 999px;
         background: linear-gradient(155deg, #ffb14f, #f07f21);
+        color: #fff !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
         box-shadow: 0 5px 12px rgba(150, 82, 25, 0.35);
         font-size: 12px;
     }
@@ -2153,12 +2108,42 @@ function isCompactLayout() {
     return window.matchMedia('(max-width: 1024px), (hover: none) and (pointer: coarse)').matches;
 }
 
+function getResultItemIndex(item) {
+    const value = Number.parseInt(item?.dataset?.index ?? '', 10);
+    return Number.isInteger(value) ? value : null;
+}
+
+function reconcileSelectionOrder() {
+    const selectedItems = [...document.querySelectorAll('.result-item.selected')];
+    const selectedIndices = selectedItems
+        .map(getResultItemIndex)
+        .filter((value) => value !== null);
+    const selectedSet = new Set(selectedIndices);
+    const current = (window.__dressaSelectionOrder || [])
+        .map((value) => Number.parseInt(value, 10))
+        .filter((value) => Number.isInteger(value) && selectedSet.has(value));
+
+    for (const idx of selectedIndices) {
+        if (!current.includes(idx)) {
+            current.push(idx);
+        }
+    }
+
+    window.__dressaSelectionOrder = current;
+    return current;
+}
+
 function updateSelectionBadges() {
-    const order = window.__dressaSelectionOrder || [];
+    const order = reconcileSelectionOrder();
     document.querySelectorAll('.result-item').forEach(item => {
         const badge = item.querySelector('.selection-badge');
         if (!badge) return;
-        const idx = Number.parseInt(item.dataset.index, 10);
+        const idx = getResultItemIndex(item);
+        if (idx === null) {
+            badge.textContent = '';
+            badge.classList.remove('visible');
+            return;
+        }
         const position = order.indexOf(idx);
         if (position === -1) {
             badge.textContent = '';
@@ -2219,6 +2204,9 @@ window.__dressa_dock_mobile_submit = dockMobileSubmitButton;
 function syncMobileLabels() {
     const resultCount = document.querySelectorAll('.result-item').length;
     document.body.classList.toggle('dressa-has-results', resultCount > 0);
+    if (resultCount === 0) {
+        window.__dressaSelectionOrder = [];
+    }
     const submitHost = document.getElementById('submit-btn');
     if (submitHost) {
         if (resultCount === 0) {
@@ -2227,6 +2215,7 @@ function syncMobileLabels() {
             submitHost.style.removeProperty('display');
         }
     }
+    updateSelectionBadges();
 
     if (!isCompactLayout()) {
         dockMobileSubmitButton();
@@ -2279,6 +2268,9 @@ function syncSelectedIndicesToInput() {
 function updateSelectionUi(selected) {
     const resultCount = document.querySelectorAll('.result-item').length;
     document.body.classList.toggle('dressa-has-results', resultCount > 0);
+    if (resultCount === 0) {
+        window.__dressaSelectionOrder = [];
+    }
     const submitHost = document.getElementById('submit-btn');
     if (submitHost) {
         if (resultCount === 0) {
@@ -2287,6 +2279,7 @@ function updateSelectionUi(selected) {
             submitHost.style.removeProperty('display');
         }
     }
+    updateSelectionBadges();
 
     const submitBtn = document.querySelector('#submit-btn button') || document.querySelector('#submit-btn');
     if (submitBtn) {
@@ -2308,15 +2301,17 @@ function updateSelectionUi(selected) {
 }
 
 function toggleSelection(index) {
-    const item = document.querySelector(`[data-index="${index}"]`);
+    const numericIndex = Number.parseInt(index, 10);
+    if (!Number.isInteger(numericIndex)) return;
+    const item = document.querySelector(`[data-index="${numericIndex}"]`);
     if (!item) return;
     const isSelected = item.classList.toggle('selected');
     item.setAttribute('aria-pressed', isSelected);
 
-    const order = window.__dressaSelectionOrder || [];
-    const existingIndex = order.indexOf(index);
+    const order = reconcileSelectionOrder();
+    const existingIndex = order.indexOf(numericIndex);
     if (isSelected && existingIndex === -1) {
-        order.push(index);
+        order.push(numericIndex);
     } else if (!isSelected && existingIndex !== -1) {
         order.splice(existingIndex, 1);
     }
