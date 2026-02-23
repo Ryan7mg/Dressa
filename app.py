@@ -1187,6 +1187,10 @@ body.dressa-searching #search-row {
     display: none !important;
 }
 
+body.dressa-has-results #search-row {
+    display: none !important;
+}
+
 #search-overlay .search-overlay-card {
     background: linear-gradient(170deg, rgba(255, 255, 255, 0.95), rgba(255, 243, 231, 0.9));
     border: 1px solid rgba(255, 230, 206, 0.95);
@@ -1359,7 +1363,7 @@ body.dressa-searching #search-row {
 }
 
 .selection-badge.visible {
-    display: none;
+    display: flex;
 }
 
 @keyframes dressaGridFade {
@@ -1395,7 +1399,12 @@ body.dressa-searching #search-row {
     .gradio-container .wrap,
     .gradio-container .gr-row,
     .gradio-container .gr-column {
-        overflow-x: clip !important;
+        overflow: visible !important;
+    }
+
+    #main-app-screen,
+    #main-row {
+        overflow: visible !important;
     }
 
     #hero,
@@ -1428,6 +1437,8 @@ body.dressa-searching #search-row {
         position: sticky !important;
         top: max(8px, env(safe-area-inset-top)) !important;
         z-index: 7200 !important;
+        align-self: start !important;
+        height: fit-content !important;
         margin: 8px auto 10px !important;
         width: min(352px, calc(100vw - 24px)) !important;
         max-width: 352px !important;
@@ -1802,14 +1813,19 @@ body.dressa-searching #search-row {
         grid-column: 2;
         grid-row: 2;
         margin: 2px 0 0 0 !important;
-        padding: 4px 8px;
-        border: 1px solid rgba(255, 255, 255, 0.65) !important;
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.62) !important;
+        padding: 6px 10px !important;
+        border: 1px solid rgba(255, 255, 255, 0.72) !important;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.74) !important;
+        box-shadow: 0 8px 18px rgba(92, 48, 25, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        display: flex !important;
+        align-items: center !important;
         font-size: 12px;
-        color: rgba(56, 34, 19, 0.86);
+        color: #2b2b2b !important;
         font-weight: 600;
-        line-height: 1.35;
+        line-height: 1.3;
         white-space: normal !important;
     }
 
@@ -1879,10 +1895,17 @@ body.dressa-searching #search-row {
     }
 
     #submit-btn {
-        position: static !important;
-        width: 100% !important;
-        margin: 0 auto !important;
+        position: fixed !important;
+        left: 50% !important;
+        right: auto !important;
+        top: auto !important;
+        transform: translateX(-50%) !important;
+        bottom: calc(62px + env(safe-area-inset-bottom)) !important;
+        width: auto !important;
+        margin: 0 !important;
         text-align: center !important;
+        z-index: 6505 !important;
+        pointer-events: none !important;
     }
 
     button#submit-btn,
@@ -1911,6 +1934,8 @@ body.dressa-searching #search-row {
         backdrop-filter: blur(10px) saturate(145%) !important;
         -webkit-backdrop-filter: blur(10px) saturate(145%) !important;
         box-shadow: 0 20px 30px rgba(224, 128, 27, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.38) !important;
+        pointer-events: auto !important;
+        z-index: 6506 !important;
     }
 
     button#submit-btn::before,
@@ -2146,6 +2171,7 @@ window.__dressa_dock_mobile_submit = dockMobileSubmitButton;
 
 function syncMobileLabels() {
     const resultCount = document.querySelectorAll('.result-item').length;
+    document.body.classList.toggle('dressa-has-results', resultCount > 0);
     const submitHost = document.getElementById('submit-btn');
     if (submitHost) {
         if (resultCount === 0) {
@@ -2205,6 +2231,7 @@ function syncSelectedIndicesToInput() {
 
 function updateSelectionUi(selected) {
     const resultCount = document.querySelectorAll('.result-item').length;
+    document.body.classList.toggle('dressa-has-results', resultCount > 0);
     const submitHost = document.getElementById('submit-btn');
     if (submitHost) {
         if (resultCount === 0) {
