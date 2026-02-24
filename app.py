@@ -1366,10 +1366,6 @@ body.dressa-searching #search-row {
     display: none !important;
 }
 
-body.dressa-has-results #search-row {
-    display: none !important;
-}
-
 body:not(.dressa-main-active) #submit-btn {
     display: none !important;
 }
@@ -1829,6 +1825,9 @@ body:not(.dressa-main-active) #submit-btn {
         column-gap: 10px;
         row-gap: 7px;
         align-items: start;
+        align-content: start !important;
+        min-height: 0 !important;
+        max-height: 260px !important;
         overflow: hidden !important;
         isolation: isolate !important;
     }
@@ -1850,6 +1849,9 @@ body:not(.dressa-main-active) #submit-btn {
         grid-column: 1;
         grid-row: 1;
         width: 120px !important;
+        height: 120px !important;
+        min-height: 120px !important;
+        max-height: 120px !important;
         min-width: 120px !important;
         max-width: 120px !important;
         margin: 0 !important;
@@ -1867,6 +1869,17 @@ body:not(.dressa-main-active) #submit-btn {
         z-index: 1;
     }
 
+    #upload-image > div,
+    #upload-image .block,
+    #upload-image .contain,
+    #upload-image .container,
+    #upload-image .wrap {
+        min-height: 0 !important;
+        height: auto !important;
+        max-height: 120px !important;
+        overflow: visible !important;
+    }
+
     #upload-image::before,
     #upload-image::after {
         display: none !important;
@@ -1877,8 +1890,10 @@ body:not(.dressa-main-active) #submit-btn {
 
     #upload-image .image-container {
         width: 120px !important;
+        max-width: 120px !important;
         min-height: 0 !important;
-        height: auto !important;
+        height: 120px !important;
+        max-height: 120px !important;
         margin: 0 !important;
         border-radius: 22px !important;
         background: transparent !important;
@@ -1906,7 +1921,9 @@ body:not(.dressa-main-active) #submit-btn {
 
     #upload-image .upload-container {
         width: 120px !important;
-        min-height: 96px !important;
+        min-height: 120px !important;
+        max-height: 120px !important;
+        height: 120px !important;
         margin: 0 !important;
         padding: 0 !important;
         border: 0 !important;
@@ -1998,8 +2015,8 @@ body:not(.dressa-main-active) #submit-btn {
     #upload-image .image-preview {
         width: 120px !important;
         max-width: 120px !important;
-        height: auto !important;
-        max-height: none !important;
+        height: 120px !important;
+        max-height: 120px !important;
         margin: 0 !important;
         border-radius: 22px !important;
         background: linear-gradient(160deg, rgba(238, 238, 238, 0.86), rgba(217, 217, 217, 0.78)) !important;
@@ -2018,6 +2035,8 @@ body:not(.dressa-main-active) #submit-btn {
         border: 1px solid rgba(246, 246, 246, 0.9) !important;
         background: linear-gradient(160deg, rgba(238, 238, 238, 0.86), rgba(217, 217, 217, 0.78)) !important;
         box-shadow: 0 12px 24px rgba(88, 47, 25, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+        height: 120px !important;
+        max-height: 120px !important;
         overflow: hidden !important;
     }
 
@@ -2704,7 +2723,8 @@ function updateMobileUploadOffset() {
     const height = Math.ceil(uploadCol.getBoundingClientRect().height || uploadCol.offsetHeight || 0);
     if (height > 0) {
         const viewportHeight = Math.max(window.innerHeight || 0, 480);
-        const clampedOffset = Math.min(Math.max(height + 2, 220), Math.round(viewportHeight * 0.68));
+        const normalizedHeight = height > 420 ? 252 : (height + 2);
+        const clampedOffset = Math.min(Math.max(normalizedHeight, 220), Math.round(viewportHeight * 0.62));
         document.documentElement.style.setProperty('--mobile-upload-offset', `${clampedOffset}px`);
     }
 }
