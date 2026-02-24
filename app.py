@@ -2711,9 +2711,7 @@ function updateMobileUploadOffset() {
 
     const height = Math.ceil(uploadCol.getBoundingClientRect().height || uploadCol.offsetHeight || 0);
     if (height > 0) {
-        const viewportHeight = Math.max(window.innerHeight || 0, 480);
-        const clampedOffset = Math.min(Math.max(height + 2, 220), Math.round(viewportHeight * 0.68));
-        document.documentElement.style.setProperty('--mobile-upload-offset', `${clampedOffset}px`);
+        document.documentElement.style.setProperty('--mobile-upload-offset', `${height + 2}px`);
     }
 }
 
@@ -2724,19 +2722,6 @@ function isMainAppVisible() {
     if (style.display === 'none' || style.visibility === 'hidden') return false;
     const rect = main.getBoundingClientRect();
     return rect.width > 0 && rect.height > 0;
-}
-
-function getVisibleResultCount() {
-    const container = document.getElementById('results-grid-container');
-    if (!container) return 0;
-    const items = [...container.querySelectorAll('.result-item')];
-    return items.filter((item) => {
-        if (!item) return false;
-        const style = window.getComputedStyle(item);
-        if (style.display === 'none' || style.visibility === 'hidden') return false;
-        if (item.getAttribute('aria-hidden') === 'true') return false;
-        return item.getClientRects().length > 0;
-    }).length;
 }
 
 function isConsentVisible() {
@@ -2904,24 +2889,11 @@ function dockMobileSubmitButton() {
 window.__dressa_dock_mobile_submit = dockMobileSubmitButton;
 
 function syncMobileLabels() {
-    const resultCount = getVisibleResultCount();
+    const resultCount = document.querySelectorAll('.result-item').length;
     const mainVisible = isMainAppVisible();
     document.body.classList.toggle('dressa-main-active', mainVisible);
     document.body.classList.toggle('dressa-has-results', mainVisible && resultCount > 0);
     dockConsentActions();
-    if (mainVisible && resultCount === 0 && !document.body.classList.contains('dressa-searching')) {
-        document.body.classList.remove('dressa-has-results');
-    }
-    if (mainVisible && resultCount === 0) {
-        const loader = document.getElementById('dressa-top-loader');
-        const loaderActive = Boolean(loader && loader.classList.contains('active'));
-        if (!loaderActive) {
-            document.body.classList.remove('dressa-searching');
-        }
-    }
-    if (!mainVisible) {
-        document.body.classList.remove('dressa-searching');
-    }
     if (resultCount === 0) {
         window.__dressaSelectionOrder = [];
     }
@@ -2988,7 +2960,7 @@ function syncSelectedIndicesToInput() {
 }
 
 function updateSelectionUi(selected) {
-    const resultCount = getVisibleResultCount();
+    const resultCount = document.querySelectorAll('.result-item').length;
     const mainVisible = isMainAppVisible();
     document.body.classList.toggle('dressa-main-active', mainVisible);
     document.body.classList.toggle('dressa-has-results', mainVisible && resultCount > 0);
@@ -3062,7 +3034,7 @@ function attachResultsObserver() {
     }
     let lastResultItemCount = -1;
     const observer = new MutationObserver(() => {
-        const currentCount = getVisibleResultCount();
+        const currentCount = container.querySelectorAll('.result-item').length;
         if (currentCount === lastResultItemCount) {
             return;
         }
@@ -3228,12 +3200,8 @@ if (!window.__dressaSubmitSyncAttached) {
 
 if (!window.__dressaSearchLoaderClickAttached) {
     document.addEventListener('click', function(event) {
-        const searchHost = event.target.closest('#search-btn button, button#search-btn, #search-btn');
-        if (!searchHost) return;
-        const search = searchHost.matches('button') ? searchHost : (searchHost.querySelector('button') || searchHost);
-        if (search && (search.disabled || search.getAttribute('aria-disabled') === 'true')) {
-            return;
-        }
+        const search = event.target.closest('#search-btn button, #search-btn');
+        if (!search) return;
         document.body.classList.add('dressa-searching');
         window.__dressa_start_participant_loader?.();
     }, true);
