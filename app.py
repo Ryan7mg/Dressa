@@ -18,7 +18,8 @@ import json
 import csv
 import html
 import uuid
-from PIL import Image
+import zipfile
+from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
 from datetime import datetime
 import shutil
@@ -27,6 +28,7 @@ import os
 import io
 import time
 import tempfile
+from typing import Any
 
 from models import ModelManager
 from utils import (
@@ -426,37 +428,31 @@ def verify_admin_password(input_password: str) -> bool:
     return input_password == ADMIN_PASSWORD
 
 
-def load_model_leaderboard(min_support: int = MIN_SUPPORT_FOR_BEST_MODEL) -> tuple[str, list[list], str]:
-    """
-    Build model leaderboard from evaluation_ratings provenance.
+def _parse_provenance(raw_value: Any) -> dict[str, Any]:
+    """Parse provenance JSON into a dictionary."""
+    try:
+        parsed = json.loads(raw_value or "{}")
+    except Exception:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
 
-    Returns:
-        summary_markdown, leaderboard_rows, status_message
-    """
+
+def _get_model_leaderboard_records(min_support: int) -> tuple[list[dict[str, Any]], int]:
+    """Return sorted leaderboard records and total evaluation row count."""
     global db
 
     if db is None:
-        return "### Best Model Right Now\nApp database is not initialized.", [], "Database is not initialized."
+        return [], 0
 
     with db._get_connection() as conn:
         cur = conn.cursor()
         cur.execute("SELECT rating, provenance FROM evaluation_ratings")
         rows = [dict(row) for row in cur.fetchall()]
 
-    if not rows:
-        summary = "### Best Model Right Now\nNo winner yet. No evaluation data has been collected."
-        return summary, [], "No evaluation ratings found."
-
-    stats: dict[str, dict[str, float]] = {}
+    stats: dict[str, dict[str, int]] = {}
     for row in rows:
         rating = row.get("rating")
-        try:
-            provenance = json.loads(row.get("provenance", "{}"))
-        except Exception:
-            continue
-        if not isinstance(provenance, dict):
-            continue
-
+        provenance = _parse_provenance(row.get("provenance", "{}"))
         for model_name in provenance.keys():
             if model_name not in stats:
                 stats[model_name] = {
@@ -467,7 +463,7 @@ def load_model_leaderboard(min_support: int = MIN_SUPPORT_FOR_BEST_MODEL) -> tup
             if rating == "similar":
                 stats[model_name]["similar_count"] += 1
 
-    leaderboard_records = []
+    leaderboard_records: list[dict[str, Any]] = []
     for model_name, model_stats in stats.items():
         total = int(model_stats["total_recommendations"])
         similar = int(model_stats["similar_count"])
@@ -491,24 +487,51 @@ def load_model_leaderboard(min_support: int = MIN_SUPPORT_FOR_BEST_MODEL) -> tup
         reverse=True,
     )
 
-    eligible_records = [rec for rec in leaderboard_records if rec["eligible"]]
+    return leaderboard_records, len(rows)
+
+
+def _build_leaderboard_summary(
+    leaderboard_records: list[dict[str, Any]],
+    min_support: int
+) -> str:
+    """Create the admin markdown summary for leaderboard."""
     refreshed_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    eligible_records = [rec for rec in leaderboard_records if rec["eligible"]]
     if eligible_records:
         winner = eligible_records[0]
-        summary = (
+        return (
             "### Best Model Right Now\n"
             f"**{winner['model']}** | "
             f"Hit rate: **{winner['hit_rate']:.3f}** | "
             f"Similar: **{winner['similar_count']}** / **{winner['total_recommendations']}**\n\n"
             f"Refreshed: `{refreshed_at}`"
         )
-    else:
-        summary = (
-            "### Best Model Right Now\n"
-            f"No winner yet (need at least **{min_support}** recommendations per model).\n\n"
-            f"Refreshed: `{refreshed_at}`"
-        )
 
+    return (
+        "### Best Model Right Now\n"
+        f"No winner yet (need at least **{min_support}** recommendations per model).\n\n"
+        f"Refreshed: `{refreshed_at}`"
+    )
+
+
+def load_model_leaderboard(min_support: int = MIN_SUPPORT_FOR_BEST_MODEL) -> tuple[str, list[list], str]:
+    """
+    Build model leaderboard from evaluation_ratings provenance.
+
+    Returns:
+        summary_markdown, leaderboard_rows, status_message
+    """
+    global db
+
+    if db is None:
+        return "### Best Model Right Now\nApp database is not initialized.", [], "Database is not initialized."
+
+    leaderboard_records, total_rows = _get_model_leaderboard_records(min_support=min_support)
+    if total_rows == 0:
+        summary = "### Best Model Right Now\nNo winner yet. No evaluation data has been collected."
+        return summary, [], "No evaluation ratings found."
+
+    summary = _build_leaderboard_summary(leaderboard_records, min_support=min_support)
     leaderboard_rows = [
         [
             rec["model"],
@@ -519,22 +542,16 @@ def load_model_leaderboard(min_support: int = MIN_SUPPORT_FOR_BEST_MODEL) -> tup
         ]
         for rec in leaderboard_records
     ]
-
-    status = f"Loaded leaderboard for {len(leaderboard_records)} models from {len(rows)} ratings."
+    status = f"Loaded leaderboard for {len(leaderboard_records)} models from {total_rows} ratings."
     return summary, leaderboard_rows, status
 
 
-def load_live_entries(max_uploads: int = 100) -> tuple[str, list[list], str]:
-    """
-    Build live per-upload analytics rows.
-
-    Returns:
-        status_message, summary_rows, visual_table_html
-    """
+def _build_live_entries_payload(max_uploads: int = 100) -> tuple[str, list[list], list[dict[str, Any]]]:
+    """Build normalized summary + visual rows for the admin live entries table."""
     global db
 
     if db is None:
-        return "Database is not initialized.", [], '<div class="admin-empty">Database unavailable.</div>'
+        return "Database is not initialized.", [], []
 
     with db._get_connection() as conn:
         cur = conn.cursor()
@@ -566,60 +583,399 @@ def load_live_entries(max_uploads: int = 100) -> tuple[str, list[list], str]:
             rating_rows = []
 
     if not upload_rows:
-        return "No uploads found yet.", [], '<div class="admin-empty">No uploads found yet.</div>'
+        return "No uploads found yet.", [], []
 
-    ratings_by_upload: dict[str, list[dict]] = {}
+    ratings_by_upload: dict[str, list[dict[str, Any]]] = {}
     for row in rating_rows:
         upload_id = row["upload_id"]
         if upload_id not in ratings_by_upload:
             ratings_by_upload[upload_id] = []
         ratings_by_upload[upload_id].append(row)
 
-    summary_rows: list[list] = []
-    visual_records: list[dict] = []
-
+    summary_rows: list[list[Any]] = []
+    visual_records: list[dict[str, Any]] = []
     for upload in upload_rows:
         upload_id = upload["upload_id"]
         rows = ratings_by_upload.get(upload_id, [])
         similar_rows = [r for r in rows if r.get("rating") == "similar"]
         not_similar_rows = [r for r in rows if r.get("rating") == "not_similar"]
-
         similar_image_paths = [r.get("result_image_id", "") for r in similar_rows if r.get("result_image_id")]
-        not_selected_image_paths = [
-            r.get("result_image_id", "")
-            for r in not_similar_rows
-            if r.get("result_image_id")
-        ]
-
+        not_selected_image_paths = [r.get("result_image_id", "") for r in not_similar_rows if r.get("result_image_id")]
         total_results = len(rows)
-        summary_rows.append(
-            [
-                upload.get("uploaded_at", ""),
-                upload.get("user_id", ""),
-                upload_id,
-                total_results,
-                len(similar_rows),
-                len(not_similar_rows),
-            ]
-        )
 
-        visual_records.append(
-            {
-                "uploaded_at": upload.get("uploaded_at", ""),
-                "user_id": upload.get("user_id", ""),
-                "upload_id": upload_id,
-                "total_results": total_results,
-                "similar_count": len(similar_rows),
-                "not_similar_count": len(not_similar_rows),
-                "query_image_path": upload.get("filepath", ""),
-                "selected_image_paths": similar_image_paths,
-                "not_selected_image_paths": not_selected_image_paths,
-            }
-        )
+        summary_rows.append([
+            upload.get("uploaded_at", ""),
+            upload.get("user_id", ""),
+            upload_id,
+            total_results,
+            len(similar_rows),
+            len(not_similar_rows),
+        ])
+
+        visual_records.append({
+            "uploaded_at": upload.get("uploaded_at", ""),
+            "user_id": upload.get("user_id", ""),
+            "upload_id": upload_id,
+            "total_results": total_results,
+            "similar_count": len(similar_rows),
+            "not_similar_count": len(not_similar_rows),
+            "query_image_path": upload.get("filepath", ""),
+            "selected_image_paths": similar_image_paths,
+            "not_selected_image_paths": not_selected_image_paths,
+        })
+
+    status = f"Loaded {len(summary_rows)} uploads (default limit {int(max_uploads)})."
+    return status, summary_rows, visual_records
+
+
+def load_live_entries(max_uploads: int = 100) -> tuple[str, list[list], str]:
+    """
+    Build live per-upload analytics rows.
+
+    Returns:
+        status_message, summary_rows, visual_table_html
+    """
+    status, summary_rows, visual_records = _build_live_entries_payload(max_uploads=max_uploads)
+    if not visual_records:
+        if "Database is not initialized" in status:
+            return status, [], '<div class="admin-empty">Database unavailable.</div>'
+        return status, [], '<div class="admin-empty">No uploads found yet.</div>'
 
     visual_table_html = _render_visual_table_html(visual_records)
-    status = f"Loaded {len(summary_rows)} uploads (default limit {int(max_uploads)})."
     return status, summary_rows, visual_table_html
+
+
+def _export_path(prefix: str, extension: str) -> Path:
+    """Build a timestamped temp export path."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return Path(tempfile.gettempdir()) / f"{prefix}_{timestamp}.{extension}"
+
+
+def _load_pdf_font(size: int) -> ImageFont.ImageFont:
+    """Load a readable TrueType font for PDF rendering, with fallback."""
+    font_candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/Library/Fonts/Arial.ttf",
+    ]
+    for candidate in font_candidates:
+        font_path = Path(candidate)
+        if font_path.exists():
+            try:
+                return ImageFont.truetype(str(font_path), size=size)
+            except Exception:
+                continue
+    return ImageFont.load_default()
+
+
+def _wrap_text_for_width(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, max_width: int) -> list[str]:
+    """Wrap a text line to pixel width, including long path-like tokens."""
+    clean = str(text or "").strip()
+    if not clean:
+        return [""]
+
+    wrapped: list[str] = []
+    remaining = clean
+    while remaining:
+        if draw.textlength(remaining, font=font) <= max_width:
+            wrapped.append(remaining)
+            break
+
+        cutoff = 1
+        for i in range(1, len(remaining) + 1):
+            if draw.textlength(remaining[:i], font=font) > max_width:
+                cutoff = max(1, i - 1)
+                break
+        split_at = remaining.rfind(" ", 0, cutoff + 1)
+        if split_at <= 0:
+            split_at = cutoff
+        wrapped.append(remaining[:split_at].rstrip())
+        remaining = remaining[split_at:].lstrip()
+
+    return wrapped or [clean]
+
+
+def _write_text_report_pdf(
+    title: str,
+    lines: list[str],
+    output_path: Path,
+    subtitle: str
+) -> None:
+    """Render a plain-text report PDF with pagination using Pillow."""
+    page_width, page_height = 1654, 2339  # A4-ish at 150dpi
+    margin = 90
+    line_height = 32
+    section_spacing = 10
+    title_font = _load_pdf_font(40)
+    subtitle_font = _load_pdf_font(24)
+    body_font = _load_pdf_font(22)
+    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    queue = lines[:] if lines else ["No rows found."]
+    pages: list[Image.Image] = []
+    cursor = 0
+    page_num = 0
+
+    while cursor < len(queue):
+        page_num += 1
+        canvas = Image.new("RGB", (page_width, page_height), color="white")
+        draw = ImageDraw.Draw(canvas)
+        y = margin
+
+        draw.text((margin, y), title, fill="#191816", font=title_font)
+        y += 58
+        draw.text((margin, y), subtitle, fill="#3f3a33", font=subtitle_font)
+        y += 40
+        draw.text((margin, y), f"Generated: {generated_at} | Page {page_num}", fill="#6f6b65", font=subtitle_font)
+        y += 52
+
+        page_start_cursor = cursor
+        max_text_width = page_width - (2 * margin)
+        while cursor < len(queue):
+            raw_line = queue[cursor]
+            wrapped_lines = _wrap_text_for_width(draw, raw_line, body_font, max_text_width)
+            needed_height = (line_height * len(wrapped_lines)) + section_spacing
+            if y + needed_height > (page_height - margin):
+                break
+            for wrapped_line in wrapped_lines:
+                draw.text((margin, y), wrapped_line, fill="#191816", font=body_font)
+                y += line_height
+            y += section_spacing
+            cursor += 1
+
+        if cursor == page_start_cursor:
+            # Hard stop safeguard for unexpectedly tall lines.
+            cursor += 1
+        pages.append(canvas)
+
+    pages[0].save(
+        output_path,
+        format="PDF",
+        save_all=True,
+        append_images=pages[1:],
+        resolution=150.0,
+    )
+
+
+def export_leaderboard_csv(min_support: int = MIN_SUPPORT_FOR_BEST_MODEL) -> tuple[str | None, str]:
+    """Export model leaderboard data as CSV."""
+    global db
+    if db is None:
+        return None, "Database is not initialized."
+
+    leaderboard_records, total_rows = _get_model_leaderboard_records(min_support=min_support)
+    if total_rows == 0:
+        return None, "No evaluation ratings found."
+
+    output_path = _export_path("dressa_model_leaderboard", "csv")
+    fieldnames = ["model", "total_recommendations", "similar_count", "hit_rate", "eligible"]
+    with open(output_path, "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for rec in leaderboard_records:
+            writer.writerow({
+                "model": rec["model"],
+                "total_recommendations": rec["total_recommendations"],
+                "similar_count": rec["similar_count"],
+                "hit_rate": round(float(rec["hit_rate"]), 6),
+                "eligible": "yes" if rec["eligible"] else "no",
+            })
+
+    return str(output_path), f"Exported leaderboard CSV for {len(leaderboard_records)} models."
+
+
+def export_leaderboard_pdf(min_support: int = MIN_SUPPORT_FOR_BEST_MODEL) -> tuple[str | None, str]:
+    """Export model leaderboard data as a PDF report."""
+    global db
+    if db is None:
+        return None, "Database is not initialized."
+
+    leaderboard_records, total_rows = _get_model_leaderboard_records(min_support=min_support)
+    if total_rows == 0:
+        return None, "No evaluation ratings found."
+
+    lines: list[str] = []
+    for rank, rec in enumerate(leaderboard_records, start=1):
+        lines.append(
+            f"{rank}. {rec['model']} | total={rec['total_recommendations']} | "
+            f"similar={rec['similar_count']} | hit_rate={float(rec['hit_rate']):.4f} | "
+            f"eligible={'yes' if rec['eligible'] else 'no'}"
+        )
+
+    output_path = _export_path("dressa_model_leaderboard", "pdf")
+    _write_text_report_pdf(
+        title="Dressa Model Leaderboard",
+        lines=lines,
+        output_path=output_path,
+        subtitle=f"Source rows: {total_rows} | Eligibility threshold: {int(min_support)}",
+    )
+    return str(output_path), f"Exported leaderboard PDF for {len(leaderboard_records)} models."
+
+
+def export_live_entries_csv(max_uploads: int = 100) -> tuple[str | None, str]:
+    """Export live entry summary + visual linkage data as CSV."""
+    status, _, visual_records = _build_live_entries_payload(max_uploads=max_uploads)
+    if not visual_records:
+        return None, status
+
+    output_path = _export_path("dressa_live_entries", "csv")
+    fieldnames = [
+        "uploaded_at",
+        "user_id",
+        "upload_id",
+        "total_results",
+        "selected_count",
+        "not_selected_count",
+        "query_image_path",
+        "selected_image_paths_json",
+        "not_selected_image_paths_json",
+    ]
+    with open(output_path, "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for rec in visual_records:
+            writer.writerow({
+                "uploaded_at": rec.get("uploaded_at", ""),
+                "user_id": rec.get("user_id", ""),
+                "upload_id": rec.get("upload_id", ""),
+                "total_results": rec.get("total_results", 0),
+                "selected_count": rec.get("similar_count", 0),
+                "not_selected_count": rec.get("not_similar_count", 0),
+                "query_image_path": rec.get("query_image_path", ""),
+                "selected_image_paths_json": json.dumps(rec.get("selected_image_paths", []), ensure_ascii=False),
+                "not_selected_image_paths_json": json.dumps(rec.get("not_selected_image_paths", []), ensure_ascii=False),
+            })
+
+    return str(output_path), f"Exported live entries CSV with {len(visual_records)} rows."
+
+
+def export_live_entries_pdf(max_uploads: int = 100) -> tuple[str | None, str]:
+    """Export live entry details as a paginated text PDF."""
+    status, _, visual_records = _build_live_entries_payload(max_uploads=max_uploads)
+    if not visual_records:
+        return None, status
+
+    lines: list[str] = []
+    for idx, rec in enumerate(visual_records, start=1):
+        lines.append("=" * 140)
+        lines.append(
+            f"Entry {idx} | uploaded_at={rec.get('uploaded_at', '')} | "
+            f"user_id={rec.get('user_id', '')} | upload_id={rec.get('upload_id', '')}"
+        )
+        lines.append(
+            f"Counts | total_results={rec.get('total_results', 0)} | "
+            f"selected={rec.get('similar_count', 0)} | not_selected={rec.get('not_similar_count', 0)}"
+        )
+        lines.append(f"Query image path: {rec.get('query_image_path', '')}")
+
+        lines.append("Selected images:")
+        selected_paths = rec.get("selected_image_paths", []) or []
+        if selected_paths:
+            for image_path in selected_paths:
+                lines.append(f"  - {image_path}")
+        else:
+            lines.append("  - None")
+
+        lines.append("Not selected images:")
+        not_selected_paths = rec.get("not_selected_image_paths", []) or []
+        if not_selected_paths:
+            for image_path in not_selected_paths:
+                lines.append(f"  - {image_path}")
+        else:
+            lines.append("  - None")
+        lines.append("")
+
+    output_path = _export_path("dressa_live_entries", "pdf")
+    _write_text_report_pdf(
+        title="Dressa Live Entries Report",
+        lines=lines,
+        output_path=output_path,
+        subtitle=f"Rows included: {len(visual_records)} | Requested limit: {int(max_uploads)}",
+    )
+    return str(output_path), f"Exported live entries PDF with {len(visual_records)} rows."
+
+
+def export_upload_images_zip() -> tuple[str | None, str]:
+    """Export full-resolution uploaded query images as ZIP with a manifest CSV."""
+    global db
+    if db is None:
+        return None, "Database is not initialized."
+
+    with db._get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT upload_id, user_id, filepath, uploaded_at
+            FROM uploads
+            ORDER BY uploaded_at DESC
+            """
+        )
+        upload_rows = [dict(row) for row in cur.fetchall()]
+
+    if not upload_rows:
+        return None, "No uploads found yet."
+
+    output_path = _export_path("dressa_uploaded_images_fullres", "zip")
+    manifest_rows: list[dict[str, Any]] = []
+    added = 0
+    missing = 0
+    used_arcnames: set[str] = set()
+
+    with zipfile.ZipFile(output_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zipf:
+        for row in upload_rows:
+            upload_id = str(row.get("upload_id", ""))
+            user_id = str(row.get("user_id", ""))
+            uploaded_at = str(row.get("uploaded_at", ""))
+            filepath = str(row.get("filepath", "")).strip()
+            path_obj = Path(filepath)
+            exists = path_obj.exists() and path_obj.is_file()
+
+            arcname = ""
+            if exists:
+                resolved = path_obj.resolve()
+                if _is_under_dir(resolved, UPLOADS_DIR):
+                    relative = resolved.relative_to(UPLOADS_DIR).as_posix()
+                    arcname = f"full_res_uploads/{relative}"
+                else:
+                    arcname = f"full_res_uploads/external/{resolved.name}"
+                if arcname in used_arcnames:
+                    arcname = f"full_res_uploads/{upload_id}_{resolved.name}"
+                zipf.write(resolved, arcname=arcname)
+                used_arcnames.add(arcname)
+                added += 1
+            else:
+                missing += 1
+
+            manifest_rows.append({
+                "upload_id": upload_id,
+                "user_id": user_id,
+                "uploaded_at": uploaded_at,
+                "filepath": filepath,
+                "exists_on_disk": "yes" if exists else "no",
+                "zip_member_path": arcname,
+            })
+
+        manifest_buffer = io.StringIO()
+        fieldnames = [
+            "upload_id",
+            "user_id",
+            "uploaded_at",
+            "filepath",
+            "exists_on_disk",
+            "zip_member_path",
+        ]
+        writer = csv.DictWriter(manifest_buffer, fieldnames=fieldnames)
+        writer.writeheader()
+        for record in manifest_rows:
+            writer.writerow(record)
+        zipf.writestr("metadata/upload_manifest.csv", manifest_buffer.getvalue())
+
+    status = (
+        f"Exported {added} full-resolution uploaded images to ZIP. "
+        f"Missing files: {missing}. Manifest included."
+    )
+    return str(output_path), status
 
 
 def export_raw_ratings_csv() -> tuple[str | None, str]:
@@ -759,6 +1115,21 @@ body {
 }
 
 .gradio-container {
+    color-scheme: light !important;
+    --body-background-fill: #fefdfb !important;
+    --body-background-fill-dark: #fefdfb !important;
+    --background-fill-primary: #ffffff !important;
+    --background-fill-primary-dark: #ffffff !important;
+    --background-fill-secondary: #faf5ef !important;
+    --background-fill-secondary-dark: #faf5ef !important;
+    --block-background-fill: #ffffff !important;
+    --block-background-fill-dark: #ffffff !important;
+    --input-background-fill: #fffaf3 !important;
+    --input-background-fill-dark: #fffaf3 !important;
+    --table-even-background-fill: #ffffff !important;
+    --table-odd-background-fill: #ffffff !important;
+    --table-border-color: #e7ddd1 !important;
+    --table-header-background-fill: #faf5ef !important;
     --body-text-color: #191816 !important;
     --body-text-color-subdued: #3f3a33 !important;
     --block-info-text-color: #3f3a33 !important;
@@ -768,6 +1139,41 @@ body {
     --input-placeholder-color: #6f6b65 !important;
     --color-text: #191816 !important;
     --link-text-color: #0b5bd3 !important;
+    color: #191816 !important;
+}
+
+html.dark,
+body.dark,
+.dark,
+[data-theme="dark"],
+[data-theme="dark"] .gradio-container,
+.dark .gradio-container {
+    color-scheme: light !important;
+    background-color: #fefdfb !important;
+    color: #191816 !important;
+}
+
+.gradio-container table,
+.gradio-container table thead,
+.gradio-container table tbody,
+.gradio-container table tr,
+.gradio-container table th,
+.gradio-container table td,
+.gradio-container .gr-dataframe table,
+.gradio-container .gr-dataframe th,
+.gradio-container .gr-dataframe td,
+.gradio-container .gr-dataframe .table-wrap,
+.gradio-container .gr-dataframe .table-container {
+    background: #ffffff !important;
+    color: #191816 !important;
+    border-color: #e7ddd1 !important;
+}
+
+#upload-image .upload-container,
+#upload-image .image-container,
+#upload-image .image-preview,
+#upload-image .image-preview * {
+    background-color: #fffaf3 !important;
     color: #191816 !important;
 }
 
@@ -3507,6 +3913,21 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                         wrap=True,
                         label="Per-model performance",
                     )
+                    with gr.Row():
+                        leaderboard_csv_btn = gr.Button("Download leaderboard CSV", variant="secondary")
+                        leaderboard_pdf_btn = gr.Button("Download leaderboard PDF", variant="secondary")
+                    with gr.Row():
+                        leaderboard_csv_file = gr.File(
+                            label="Leaderboard CSV file",
+                            interactive=False,
+                            visible=False,
+                        )
+                        leaderboard_pdf_file = gr.File(
+                            label="Leaderboard PDF file",
+                            interactive=False,
+                            visible=False,
+                        )
+                    leaderboard_export_status = gr.Markdown("")
 
                 with gr.Tab("Live entries (tables + visuals)"):
                     with gr.Row():
@@ -3538,9 +3959,36 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     gr.Markdown("### Table B: Visual comparison")
                     visual_table_html = gr.HTML(value="")
 
+                    gr.Markdown("### Downloads")
                     with gr.Row():
+                        entries_csv_btn = gr.Button("Download live entries CSV", variant="secondary")
+                        entries_pdf_btn = gr.Button("Download live entries PDF", variant="secondary")
+                    with gr.Row():
+                        uploads_zip_btn = gr.Button("Download full-size uploaded images ZIP", variant="secondary")
                         raw_csv_btn = gr.Button("Download raw data CSV", variant="secondary")
-                        raw_csv_file = gr.File(label="CSV file", interactive=False)
+                    with gr.Row():
+                        entries_csv_file = gr.File(
+                            label="Live entries CSV file",
+                            interactive=False,
+                            visible=False,
+                        )
+                        entries_pdf_file = gr.File(
+                            label="Live entries PDF file",
+                            interactive=False,
+                            visible=False,
+                        )
+                    with gr.Row():
+                        uploads_zip_file = gr.File(
+                            label="Full-size uploads ZIP file",
+                            interactive=False,
+                            visible=False,
+                        )
+                        raw_csv_file = gr.File(
+                            label="Raw ratings CSV file",
+                            interactive=False,
+                            visible=False,
+                        )
+                    entries_export_status = gr.Markdown("")
                     raw_csv_status = gr.Markdown("")
 
         admin_secret_link = gr.Button("research tools", variant="secondary", size="sm", elem_id="admin-secret-link")
@@ -3957,6 +4405,41 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             """Refresh live entries tab."""
             return load_admin_tables(max_uploads)
 
+        def on_download_leaderboard_csv():
+            """Generate and return leaderboard CSV export."""
+            filepath, status = export_leaderboard_csv(min_support=MIN_SUPPORT_FOR_BEST_MODEL)
+            if filepath:
+                return gr.update(value=filepath, visible=True), status
+            return gr.update(value=None, visible=False), status
+
+        def on_download_leaderboard_pdf():
+            """Generate and return leaderboard PDF export."""
+            filepath, status = export_leaderboard_pdf(min_support=MIN_SUPPORT_FOR_BEST_MODEL)
+            if filepath:
+                return gr.update(value=filepath, visible=True), status
+            return gr.update(value=None, visible=False), status
+
+        def on_download_live_entries_csv(max_uploads: int):
+            """Generate and return live entries CSV export."""
+            filepath, status = export_live_entries_csv(max_uploads=int(max_uploads))
+            if filepath:
+                return gr.update(value=filepath, visible=True), status
+            return gr.update(value=None, visible=False), status
+
+        def on_download_live_entries_pdf(max_uploads: int):
+            """Generate and return live entries PDF export."""
+            filepath, status = export_live_entries_pdf(max_uploads=int(max_uploads))
+            if filepath:
+                return gr.update(value=filepath, visible=True), status
+            return gr.update(value=None, visible=False), status
+
+        def on_download_upload_images_zip():
+            """Generate and return full-resolution upload ZIP export."""
+            filepath, status = export_upload_images_zip()
+            if filepath:
+                return gr.update(value=filepath, visible=True), status
+            return gr.update(value=None, visible=False), status
+
         def on_download_raw_csv():
             """Generate and return raw CSV export."""
             filepath, status = export_raw_ratings_csv()
@@ -4177,6 +4660,16 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             inputs=[],
             outputs=[leaderboard_summary, leaderboard_df, leaderboard_status],
         )
+        leaderboard_csv_btn.click(
+            fn=on_download_leaderboard_csv,
+            inputs=[],
+            outputs=[leaderboard_csv_file, leaderboard_export_status],
+        )
+        leaderboard_pdf_btn.click(
+            fn=on_download_leaderboard_pdf,
+            inputs=[],
+            outputs=[leaderboard_pdf_file, leaderboard_export_status],
+        )
 
         entries_refresh_btn.click(
             fn=on_refresh_live_entries,
@@ -4186,6 +4679,21 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 summary_df,
                 visual_table_html,
             ],
+        )
+        entries_csv_btn.click(
+            fn=on_download_live_entries_csv,
+            inputs=[max_uploads_dropdown],
+            outputs=[entries_csv_file, entries_export_status],
+        )
+        entries_pdf_btn.click(
+            fn=on_download_live_entries_pdf,
+            inputs=[max_uploads_dropdown],
+            outputs=[entries_pdf_file, entries_export_status],
+        )
+        uploads_zip_btn.click(
+            fn=on_download_upload_images_zip,
+            inputs=[],
+            outputs=[uploads_zip_file, entries_export_status],
         )
 
         raw_csv_btn.click(
