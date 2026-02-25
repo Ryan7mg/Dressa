@@ -1169,6 +1169,33 @@ body.dark,
     border-color: #e7ddd1 !important;
 }
 
+.gradio-container input,
+.gradio-container textarea,
+.gradio-container select {
+    background-color: #fffaf3 !important;
+    color: #191816 !important;
+    -webkit-text-fill-color: #191816 !important;
+    border-color: #d8cabc !important;
+}
+
+.gradio-container input::placeholder,
+.gradio-container textarea::placeholder {
+    color: #7b7065 !important;
+    opacity: 1 !important;
+}
+
+#admin-gate-screen input,
+#admin-gate-screen textarea,
+#admin-panel-screen input,
+#admin-panel-screen textarea,
+#admin-gate-screen [data-testid="textbox"] input,
+#admin-panel-screen [data-testid="textbox"] input {
+    background: #fffaf3 !important;
+    color: #191816 !important;
+    -webkit-text-fill-color: #191816 !important;
+    border-color: #d8cabc !important;
+}
+
 #upload-image .upload-container,
 #upload-image .image-container,
 #upload-image .image-preview,
@@ -2050,6 +2077,26 @@ body:not(.dressa-main-active) #submit-btn {
         max-width: min(300px, calc(100vw - 20px)) !important;
         padding: 0 50px !important;
         white-space: nowrap !important;
+    }
+}
+
+@media (hover: none) and (pointer: coarse) {
+    #upload-image .upload-container > button,
+    #upload-image .upload-container > button .wrap,
+    #upload-image .upload-container > button .wrap * {
+        font-size: 0 !important;
+        line-height: 0 !important;
+        color: transparent !important;
+        -webkit-text-fill-color: transparent !important;
+        text-shadow: none !important;
+    }
+
+    #upload-image .upload-container > button svg {
+        opacity: 0 !important;
+    }
+
+    #upload-image [role="tablist"] {
+        display: none !important;
     }
 }
 
