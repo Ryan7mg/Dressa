@@ -3004,10 +3004,26 @@ body:not(.dressa-main-active) #submit-btn {
         display: none !important;
     }
 
-    #admin-secret-link,
+    #admin-secret-link {
+        display: block !important;
+        position: fixed !important;
+        right: 10px !important;
+        bottom: calc(62px + env(safe-area-inset-bottom)) !important;
+        z-index: 6510 !important;
+        width: auto !important;
+        margin: 0 !important;
+        opacity: 0.65 !important;
+    }
+
     #admin-secret-link button,
     button#admin-secret-link {
-        display: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-height: 26px !important;
+        height: 26px !important;
+        padding: 0 10px !important;
+        font-size: 10px !important;
     }
 }
 
