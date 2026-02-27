@@ -3004,26 +3004,10 @@ body:not(.dressa-main-active) #submit-btn {
         display: none !important;
     }
 
-    #admin-secret-link {
-        display: block !important;
-        position: fixed !important;
-        right: 10px !important;
-        bottom: calc(62px + env(safe-area-inset-bottom)) !important;
-        z-index: 6510 !important;
-        width: auto !important;
-        margin: 0 !important;
-        opacity: 0.65 !important;
-    }
-
+    #admin-secret-link,
     #admin-secret-link button,
     button#admin-secret-link {
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        min-height: 26px !important;
-        height: 26px !important;
-        padding: 0 10px !important;
-        font-size: 10px !important;
+        display: none !important;
     }
 }
 
@@ -4426,7 +4410,8 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     '<div class="admin-empty">Admin is locked.</div>',
                 )
 
-            if not verify_admin_password(input_password):
+            normalized_password = (input_password or "").strip()
+            if not verify_admin_password(normalized_password):
                 return (
                     "❌ Incorrect password.",
                     gr.update(visible=True),
@@ -4439,14 +4424,34 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     '<div class="admin-empty">Admin is locked.</div>',
                 )
 
-            leaderboard_summary_text, leaderboard_rows, leaderboard_status_text = load_model_leaderboard(
-                min_support=MIN_SUPPORT_FOR_BEST_MODEL
-            )
-            (
-                entries_status_text,
-                summary_rows,
-                visual_html,
-            ) = load_admin_tables(100)
+            leaderboard_summary_text = "### Best Model Right Now\nLoading..."
+            leaderboard_rows = []
+            leaderboard_status_text = "Leaderboard not loaded yet."
+            entries_status_text = "Live entries not loaded yet."
+            summary_rows = []
+            visual_html = '<div class="admin-empty">Loading live entries...</div>'
+
+            try:
+                leaderboard_summary_text, leaderboard_rows, leaderboard_status_text = load_model_leaderboard(
+                    min_support=MIN_SUPPORT_FOR_BEST_MODEL
+                )
+            except Exception:
+                logger.exception("Admin unlock: failed to auto-load leaderboard")
+                leaderboard_summary_text = "### Best Model Right Now\nTemporarily unavailable."
+                leaderboard_rows = []
+                leaderboard_status_text = "Leaderboard failed to auto-load. Tap Refresh leaderboard."
+
+            try:
+                (
+                    entries_status_text,
+                    summary_rows,
+                    visual_html,
+                ) = load_admin_tables(20)
+            except Exception:
+                logger.exception("Admin unlock: failed to auto-load live entries")
+                entries_status_text = "Live entries failed to auto-load. Tap Refresh live entries."
+                summary_rows = []
+                visual_html = '<div class="admin-empty">Tap Refresh live entries to load data.</div>'
 
             return (
                 "✅ Admin unlocked.",
