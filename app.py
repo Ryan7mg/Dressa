@@ -3980,7 +3980,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     with gr.Row():
                         max_uploads_dropdown = gr.Dropdown(
                             choices=[20, 50, 100, 200],
-                            value=100,
+                            value=20,
                             label="Recent uploads to load",
                         )
                         entries_refresh_btn = gr.Button(
@@ -4427,9 +4427,9 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             leaderboard_summary_text = "### Best Model Right Now\nLoading..."
             leaderboard_rows = []
             leaderboard_status_text = "Leaderboard not loaded yet."
-            entries_status_text = "Live entries not loaded yet."
+            entries_status_text = "Admin unlocked. Tap Refresh live entries to load Table A and Table B."
             summary_rows = []
-            visual_html = '<div class="admin-empty">Loading live entries...</div>'
+            visual_html = '<div class="admin-empty">Tap Refresh live entries to load data.</div>'
 
             try:
                 leaderboard_summary_text, leaderboard_rows, leaderboard_status_text = load_model_leaderboard(
@@ -4440,18 +4440,6 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 leaderboard_summary_text = "### Best Model Right Now\nTemporarily unavailable."
                 leaderboard_rows = []
                 leaderboard_status_text = "Leaderboard failed to auto-load. Tap Refresh leaderboard."
-
-            try:
-                (
-                    entries_status_text,
-                    summary_rows,
-                    visual_html,
-                ) = load_admin_tables(20)
-            except Exception:
-                logger.exception("Admin unlock: failed to auto-load live entries")
-                entries_status_text = "Live entries failed to auto-load. Tap Refresh live entries."
-                summary_rows = []
-                visual_html = '<div class="admin-empty">Tap Refresh live entries to load data.</div>'
 
             return (
                 "✅ Admin unlocked.",
