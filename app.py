@@ -3764,6 +3764,7 @@ def create_app():
         gallery_images_state = gr.State(value=[])
         upload_count_state = gr.State(value=0)
         participant_view_state = gr.State(value="consent")
+        prefetch_results_state = gr.State(value=None)  # (gallery_images, filtered_results, image_hash) or None
 
         # ==================== CONSENT SCREEN ====================
         with gr.Column(visible=True, min_width=0, elem_id="consent-screen") as consent_screen:
@@ -4192,8 +4193,21 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
 
             return html
 
-        def on_search(image, user_id, upload_id, upload_count):
-            """Handle search button click."""
+        def on_prefetch(image, user_id):
+            """Silently run search on upload so results are ready when button is clicked."""
+            if image is None:
+                return None
+            try:
+                results = search_similar_dresses(image, user_id, "prefetch")
+                filtered_results, gallery_images = filter_results_for_gallery(results)
+                image_hash = compute_image_hash(_normalize_image_for_jpeg(image))
+                return (gallery_images, filtered_results, image_hash)
+            except Exception:
+                logger.exception("Prefetch failed")
+                return None
+
+        def on_reveal_results(image, user_id, upload_id, upload_count, prefetch_state):
+            """Handle search button click, using prefetch data when available."""
             if image is None:
                 return (
                     user_id, upload_id, [], [], [], upload_count,
@@ -4223,11 +4237,24 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 upload_record_created = True
                 logger.info(f"New upload: {next_upload_id} (count: {next_upload_count})")
 
-                # Search for similar dresses
-                results = search_similar_dresses(image, user_id, next_upload_id)
+                # Use prefetch results if available and image matches
+                used_prefetch = False
+                if prefetch_state is not None:
+                    try:
+                        prefetch_gallery, prefetch_filtered, prefetch_hash = prefetch_state
+                        current_hash = compute_image_hash(_normalize_image_for_jpeg(image))
+                        if current_hash == prefetch_hash and prefetch_gallery:
+                            gallery_images = prefetch_gallery
+                            filtered_results = prefetch_filtered
+                            used_prefetch = True
+                            logger.info("Using prefetch results (hash match)")
+                    except Exception:
+                        logger.warning("Prefetch state invalid, falling back to fresh search")
 
-                # Filter results to corpus-only images and build gallery
-                filtered_results, gallery_images = filter_results_for_gallery(results)
+                if not used_prefetch:
+                    # Fallback: run fresh search
+                    results = search_similar_dresses(image, user_id, next_upload_id)
+                    filtered_results, gallery_images = filter_results_for_gallery(results)
 
                 if not gallery_images:
                     return (
@@ -4629,6 +4656,14 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             show_progress="hidden",
         )
 
+        # Prefetch triggered silently on every upload change
+        prefetch_dep = upload_image.change(
+            fn=on_prefetch,
+            inputs=[upload_image, user_id_state],
+            outputs=[prefetch_results_state],
+            show_progress="hidden",
+        )
+
         upload_change_dep = upload_image.change(
             fn=on_upload_image_change,
             inputs=[upload_image],
@@ -4638,6 +4673,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 submit_btn, selection_instructions, selection_count,
             ],
             show_progress="hidden",
+            cancels=[prefetch_dep],
         )
         upload_change_dep.success(
             fn=None,
@@ -4648,10 +4684,11 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             js="() => { window.__dressa_sync_mobile_labels?.(); }",
         )
 
-        # Search events
+        # Search events — use on_reveal_results which reads from prefetch state
         search_dep = search_btn.click(
-            fn=on_search,
-            inputs=[upload_image, user_id_state, upload_id_state, upload_count_state],
+            fn=on_reveal_results,
+            inputs=[upload_image, user_id_state, upload_id_state, upload_count_state,
+                    prefetch_results_state],
             outputs=[
                 user_id_state, upload_id_state, current_results_state,
                 selected_indices_state, gallery_images_state, upload_count_state,
