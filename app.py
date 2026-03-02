@@ -1264,7 +1264,6 @@ body.dark,
     grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
     grid-template-areas:
         "upload results"
-        "search results"
         "finish results";
     gap: 26px;
     align-items: flex-start;
@@ -1274,16 +1273,9 @@ body.dark,
     grid-area: upload;
 }
 
-#search-row {
-    grid-area: search;
-    margin: 0;
-    justify-content: flex-start;
-    align-self: start;
+#upload-col #search-btn {
     width: 100%;
-}
-
-#search-row #search-btn {
-    width: min(360px, 100%);
+    margin-top: 10px;
 }
 
 #finish-row {
@@ -1815,7 +1807,7 @@ body.dressa-searching #search-overlay {
     display: flex;
 }
 
-body.dressa-searching #search-row {
+body.dressa-searching #search-btn {
     display: none !important;
 }
 
@@ -1967,10 +1959,6 @@ body:not(.dressa-main-active) #submit-btn {
     #submit-btn {
         margin-left: auto !important;
         margin-right: auto !important;
-    }
-
-    #search-row {
-        justify-content: center !important;
     }
 
     #agree-btn,
@@ -2257,7 +2245,6 @@ body:not(.dressa-main-active) #submit-btn {
         grid-template-columns: minmax(0, 1fr) !important;
         grid-template-areas:
             "upload"
-            "search"
             "finish"
             "results";
         gap: 1px !important;
@@ -2688,10 +2675,10 @@ body:not(.dressa-main-active) #submit-btn {
         justify-content: center;
     }
 
-    #search-row {
+    #upload-col #search-btn {
         width: 100% !important;
         max-width: 100% !important;
-        margin: 0 !important;
+        margin: 8px 0 0 !important;
         justify-content: center !important;
         box-sizing: border-box !important;
     }
@@ -3841,6 +3828,12 @@ University of Glasgow - School of Computing Science
                         "Use gallery or camera. If you pick the wrong photo, use the X icon to remove and re-upload.",
                         elem_id="upload-helper",
                     )
+                    search_btn = gr.Button(
+                        "Find Similar Dresses",
+                        variant="primary",
+                        elem_id="search-btn",
+                        interactive=False,
+                    )
                     upload_progress_mobile = gr.Markdown(
                         "Uploads completed: 0 of 3-5 recommended",
                         elem_id="upload-progress-mobile"
@@ -3855,14 +3848,6 @@ University of Glasgow - School of Computing Science
                         visible=False,
                         interactive=True,
                         elem_id="submit-btn"
-                    )
-
-                with gr.Row(elem_id="search-row"):
-                    search_btn = gr.Button(
-                        "Find Similar Dresses",
-                        variant="primary",
-                        elem_id="search-btn",
-                        interactive=False,
                     )
 
                 # Finish button (appears after minimum uploads)
