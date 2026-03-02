@@ -3373,7 +3373,7 @@ function syncMobileLabels() {
     if (submitBtn) {
         const selectedCount = getSelectedIndices().length;
         submitBtn.textContent = `Submit (${selectedCount})`;
-        submitBtn.disabled = selectedCount === 0 || resultCount === 0;
+        submitBtn.disabled = resultCount === 0;
         submitBtn.setAttribute('aria-disabled', String(submitBtn.disabled));
     }
     updateMobileUploadOffset();
@@ -3435,7 +3435,7 @@ function updateSelectionUi(selected) {
         } else {
             submitBtn.textContent = `Submit Similar Selections (${selected.length})`;
         }
-        submitBtn.disabled = selected.length === 0 || resultCount === 0;
+        submitBtn.disabled = resultCount === 0;
         submitBtn.setAttribute('aria-disabled', String(submitBtn.disabled));
     }
     updateMobileUploadOffset();
@@ -3860,7 +3860,7 @@ University of Glasgow - School of Computing Science
 
                     # Instructions for selection
                     selection_instructions = gr.Markdown(
-                        "Select all images you think are similar. Tap again to unselect.",
+                        "Select all images you think are similar. If none are similar, leave all unselected and submit. Tap again to unselect.",
                         visible=False,
                         elem_id="selection-instructions"
                     )
@@ -4089,7 +4089,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 gr.update(value=""),  # results_grid_html
                 gr.update(value=reset_progress),  # upload_progress
                 gr.update(value=reset_progress),  # upload_progress_mobile
-                gr.update(interactive=False),  # search_btn
+                gr.update(visible=True, interactive=False),  # search_btn
                 gr.update(visible=False),  # finish_btn
                 "consent",  # participant_view_state
             )
@@ -4145,7 +4145,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     "",
                     f"Uploads completed: {upload_count} of 3-5 recommended",
                     f"Uploads completed: {upload_count} of 3-5 recommended",
-                    gr.update(interactive=False),
+                    gr.update(visible=True, interactive=False),
                     gr.update(visible=upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
 
@@ -4180,11 +4180,14 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                         "",
                         f"Uploads completed: {next_upload_count} of 3-5 recommended",
                         f"Uploads completed: {next_upload_count} of 3-5 recommended",
-                        gr.update(interactive=True),
+                        gr.update(visible=True, interactive=True),
                         gr.update(visible=next_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                     )
 
-                progress_msg = f"Found **{len(gallery_images)}** similar dresses. Select all matching images, then submit."
+                progress_msg = (
+                    f"Found **{len(gallery_images)}** similar dresses. Select all matching images, then submit. "
+                    "If none are similar, submit with 0 selected."
+                )
                 selection_text = f"Selected: 0 of {len(gallery_images)}"
                 grid_html = generate_results_grid_html(gallery_images, [])
 
@@ -4196,11 +4199,11 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     gr.update(visible=True, value=selection_text),
                     grid_html,
                     "[]",
-                    gr.update(visible=True, interactive=False, value="Submit Similar Selections (0)"),
+                    gr.update(visible=True, interactive=True, value="Submit Similar Selections (0)"),
                     "",
                     f"Uploads completed: {next_upload_count} of 3-5 recommended",
                     f"Uploads completed: {next_upload_count} of 3-5 recommended",
-                    gr.update(interactive=True),
+                    gr.update(visible=False, interactive=False),
                     gr.update(visible=next_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
             except Exception:
@@ -4226,7 +4229,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     "",
                     progress_line,
                     progress_line,
-                    gr.update(interactive=True),
+                    gr.update(visible=True, interactive=True),
                     gr.update(visible=effective_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
 
@@ -4234,7 +4237,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             """Enable search only when an upload is present."""
             has_image = image is not None
             return (
-                gr.update(interactive=has_image),
+                gr.update(visible=True, interactive=has_image),
                 gr.update(value="Click to upload", visible=not has_image),
             )
 
@@ -4249,7 +4252,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
 
             return (
                 selected_indices,
-                gr.update(value=btn_text, interactive=(count > 0)),
+                gr.update(value=btn_text, interactive=(total > 0)),
                 gr.update(value=count_text, visible=True)
             )
 
@@ -4284,7 +4287,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     "Upload a photo, then tap Find Similar Dresses.",
                     "",
                     gr.update(value=None),
-                    gr.update(interactive=False),
+                    gr.update(visible=True, interactive=False),
                     gr.update(value="Click to upload", visible=True),
                 )
 
@@ -4346,7 +4349,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 "Upload another photo, then tap Find Similar Dresses.",
                 "",
                 gr.update(value=None),
-                gr.update(interactive=False),
+                gr.update(visible=True, interactive=False),
                 gr.update(value="Click to upload", visible=True),
             )
 
