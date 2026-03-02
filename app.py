@@ -4296,11 +4296,26 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 )
 
         def on_upload_image_change(image):
-            """Enable search only when an upload is present."""
+            """Enable/disable search button and clear stale results when image removed."""
             has_image = image is not None
+            if has_image:
+                return (
+                    gr.update(visible=True, interactive=True),
+                    gr.update(value="Click to upload", visible=False),
+                    gr.update(),  # results_grid_html unchanged
+                    gr.update(),  # progress_text unchanged
+                    gr.update(),  # submit_btn unchanged
+                    gr.update(),  # selection_instructions unchanged
+                    gr.update(),  # selection_count unchanged
+                )
             return (
-                gr.update(visible=True, interactive=has_image),
-                gr.update(value="Click to upload", visible=not has_image),
+                gr.update(visible=True, interactive=False),
+                gr.update(value="Click to upload", visible=True),
+                "",  # clear results grid
+                "Upload a photo, then tap Find Similar Dresses.",  # reset progress text
+                gr.update(visible=False),  # hide submit button
+                gr.update(visible=False),  # hide selection instructions
+                gr.update(visible=False),  # hide selection count
             )
 
         def on_selection_change(selected_indices_json, gallery_images):
@@ -4617,7 +4632,11 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
         upload_change_dep = upload_image.change(
             fn=on_upload_image_change,
             inputs=[upload_image],
-            outputs=[search_btn, upload_click_hint_mobile],
+            outputs=[
+                search_btn, upload_click_hint_mobile,
+                results_grid_html, progress_text,
+                submit_btn, selection_instructions, selection_count,
+            ],
             show_progress="hidden",
         )
         upload_change_dep.success(
