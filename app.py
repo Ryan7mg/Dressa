@@ -1356,13 +1356,16 @@ body.dark .gradio-container *,
 
 #upload-col, #results-col {
     background: linear-gradient(155deg, rgba(255, 255, 255, 0.92), rgba(254, 249, 244, 0.88));
-    border: 1px solid rgba(235, 219, 205, 0.95);
     border-radius: 24px;
     padding: 18px;
     box-shadow: 0 18px 42px rgba(24, 16, 8, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
     overflow: visible !important;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+}
+
+#results-col {
+    border: 1px solid rgba(235, 219, 205, 0.95);
 }
 
 #results-grid-container {
@@ -1561,7 +1564,6 @@ html .selection-badge,
     column-count: 2;
     column-gap: 12px;
     padding: 2px;
-    animation: dressaGridFade 0.18s ease both;
 }
 
 .results-grid .result-item,
@@ -1577,7 +1579,6 @@ html .selection-badge,
     border: 0 !important;
     outline: none !important;
     transition: box-shadow 0.15s ease;
-    transform: translateZ(0);
     background: #ffffff !important;
     padding: 0 !important;
     box-shadow: 0 8px 20px rgba(97, 51, 29, 0.16) !important;
