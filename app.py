@@ -1153,6 +1153,67 @@ body.dark,
     color: #191816 !important;
 }
 
+html.dark .gradio-container *,
+body.dark .gradio-container *,
+.dark .gradio-container *,
+[data-theme="dark"] .gradio-container * {
+    color-scheme: light !important;
+}
+
+/* Force light on admin screens regardless of system theme */
+#admin-panel-screen,
+#admin-gate-screen {
+    background-color: #fefdfb !important;
+    color: #191816 !important;
+    color-scheme: light !important;
+}
+
+#admin-panel-screen .tabs,
+#admin-panel-screen .tabitem,
+#admin-panel-screen .block,
+#admin-panel-screen .form,
+#admin-panel-screen .wrap {
+    background-color: #ffffff !important;
+    color: #191816 !important;
+    border-color: #e7ddd1 !important;
+}
+
+#admin-panel-screen table,
+#admin-panel-screen thead,
+#admin-panel-screen tbody,
+#admin-panel-screen tr,
+#admin-panel-screen th,
+#admin-panel-screen td {
+    background-color: #ffffff !important;
+    color: #191816 !important;
+    border-color: #e7ddd1 !important;
+}
+
+#admin-panel-screen th {
+    background-color: #faf5ef !important;
+}
+
+#admin-panel-screen tr:nth-child(even) td {
+    background-color: #fefdfb !important;
+}
+
+#admin-panel-screen input,
+#admin-panel-screen textarea,
+#admin-panel-screen select,
+#admin-panel-screen [class*="cell"],
+#admin-panel-screen [class*="table"] {
+    background-color: #fffaf3 !important;
+    color: #191816 !important;
+    -webkit-text-fill-color: #191816 !important;
+}
+
+#admin-gate-screen .block,
+#admin-gate-screen input,
+#admin-gate-screen textarea {
+    background-color: #ffffff !important;
+    color: #191816 !important;
+}
+
 .gradio-container table,
 .gradio-container table thead,
 .gradio-container table tbody,
