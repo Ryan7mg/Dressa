@@ -1561,8 +1561,6 @@ html .selection-badge,
     column-count: 2;
     column-gap: 12px;
     padding: 2px;
-    contain: layout style;
-    min-height: 400px;
     animation: dressaGridFade 0.18s ease both;
 }
 
@@ -1594,8 +1592,6 @@ html .selection-badge,
     object-fit: contain !important;
     background: #ffffff !important;
     display: block !important;
-    content-visibility: auto;
-    contain-intrinsic-size: 200px 280px;
 }
 
 .results-grid .result-item:hover,
@@ -3942,14 +3938,6 @@ University of Glasgow - School of Computing Science
                         elem_id="upload-progress-mobile"
                     )
                     status_text = gr.Markdown("", visible=False, elem_id="status-text")
-
-                    with gr.Row(elem_id="search-row"):
-                        search_btn = gr.Button(
-                            "Find Similar Dresses",
-                            variant="primary",
-                            elem_id="search-btn",
-                            interactive=False,
-                        )
 
                     # Submit button (desktop: sits in upload column; mobile: JS docks fixed)
                     submit_btn = gr.Button(
