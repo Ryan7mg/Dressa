@@ -1425,16 +1425,42 @@ h1, h2, h3 {
     padding: 0 !important;
 }
 
+#upload-image .image-preview img,
+#upload-image .image-preview canvas,
+#upload-image .image-container img,
+#upload-image .image-container canvas {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    border: 0 !important;
+    border-radius: 18px !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+#upload-image [role="tablist"],
+#upload-image [role="tab"] {
+    display: none !important;
+}
+
 #upload-image .image-preview .toolbar,
 #upload-image .image-preview .image-preview-controls,
 #upload-image .image-preview .buttons {
     display: flex !important;
     gap: 8px !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
 }
 
+#upload-image .image-preview .toolbar > button:not(:last-child),
+#upload-image .image-preview .image-preview-controls > button:not(:last-child),
+#upload-image .image-preview .buttons > button:not(:last-child),
 #upload-image .image-preview button[aria-label="Fullscreen"],
 #upload-image .image-preview button[aria-label="Zoom"],
-#upload-image .image-preview button[aria-label="View"] {
+#upload-image .image-preview button[aria-label="View"],
+#upload-image .image-preview button[aria-label="Edit"] {
     display: none !important;
 }
 
@@ -3373,7 +3399,7 @@ function syncMobileLabels() {
     if (submitBtn) {
         const selectedCount = getSelectedIndices().length;
         submitBtn.textContent = `Submit (${selectedCount})`;
-        submitBtn.disabled = selectedCount === 0 || resultCount === 0;
+        submitBtn.disabled = resultCount === 0;
         submitBtn.setAttribute('aria-disabled', String(submitBtn.disabled));
     }
     updateMobileUploadOffset();
@@ -3435,7 +3461,7 @@ function updateSelectionUi(selected) {
         } else {
             submitBtn.textContent = `Submit Similar Selections (${selected.length})`;
         }
-        submitBtn.disabled = selected.length === 0 || resultCount === 0;
+        submitBtn.disabled = resultCount === 0;
         submitBtn.setAttribute('aria-disabled', String(submitBtn.disabled));
     }
     updateMobileUploadOffset();
@@ -4196,7 +4222,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     gr.update(visible=True, value=selection_text),
                     grid_html,
                     "[]",
-                    gr.update(visible=True, interactive=False, value="Submit Similar Selections (0)"),
+                    gr.update(visible=True, interactive=True, value="Submit Similar Selections (0)"),
                     "",
                     f"Uploads completed: {next_upload_count} of 3-5 recommended",
                     f"Uploads completed: {next_upload_count} of 3-5 recommended",
@@ -4249,7 +4275,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
 
             return (
                 selected_indices,
-                gr.update(value=btn_text, interactive=(count > 0)),
+                gr.update(value=btn_text, interactive=(total > 0)),
                 gr.update(value=count_text, visible=True)
             )
 
