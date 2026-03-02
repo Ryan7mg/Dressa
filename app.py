@@ -1483,6 +1483,9 @@ html .selection-badge,
     column-count: 2;
     column-gap: 12px;
     padding: 2px;
+    contain: layout style;
+    min-height: 400px;
+    animation: dressaGridFade 0.18s ease both;
 }
 
 .results-grid .result-item,
@@ -1497,7 +1500,8 @@ html .selection-badge,
     overflow: hidden !important;
     border: 0 !important;
     outline: none !important;
-    transition: transform 0.12s ease, box-shadow 0.2s ease;
+    transition: box-shadow 0.15s ease;
+    transform: translateZ(0);
     background: #ffffff !important;
     padding: 0 !important;
     box-shadow: 0 8px 20px rgba(97, 51, 29, 0.16) !important;
@@ -1512,11 +1516,12 @@ html .selection-badge,
     object-fit: contain !important;
     background: #ffffff !important;
     display: block !important;
+    content-visibility: auto;
+    contain-intrinsic-size: 200px 280px;
 }
 
 .results-grid .result-item:hover,
 .results-grid button.result-item:hover {
-    transform: translateY(-2px);
     box-shadow: 0 10px 24px rgba(97, 51, 29, 0.20) !important;
 }
 
@@ -2812,10 +2817,17 @@ body:not(.dressa-main-active) #submit-btn {
         max-width: 100% !important;
         position: relative !important;
         overflow: visible !important;
+        min-height: 0 !important;
+        height: auto !important;
     }
 
     #results-grid-stage {
         width: 100%;
+        overflow: visible !important;
+    }
+
+    #main-row {
+        overflow: visible !important;
     }
 
     #results-grid-container {
