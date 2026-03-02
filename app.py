@@ -1153,6 +1153,67 @@ body.dark,
     color: #191816 !important;
 }
 
+html.dark .gradio-container *,
+body.dark .gradio-container *,
+.dark .gradio-container *,
+[data-theme="dark"] .gradio-container * {
+    color-scheme: light !important;
+}
+
+/* Force light on admin screens regardless of system theme */
+#admin-panel-screen,
+#admin-gate-screen {
+    background-color: #fefdfb !important;
+    color: #191816 !important;
+    color-scheme: light !important;
+}
+
+#admin-panel-screen .tabs,
+#admin-panel-screen .tabitem,
+#admin-panel-screen .block,
+#admin-panel-screen .form,
+#admin-panel-screen .wrap {
+    background-color: #ffffff !important;
+    color: #191816 !important;
+    border-color: #e7ddd1 !important;
+}
+
+#admin-panel-screen table,
+#admin-panel-screen thead,
+#admin-panel-screen tbody,
+#admin-panel-screen tr,
+#admin-panel-screen th,
+#admin-panel-screen td {
+    background-color: #ffffff !important;
+    color: #191816 !important;
+    border-color: #e7ddd1 !important;
+}
+
+#admin-panel-screen th {
+    background-color: #faf5ef !important;
+}
+
+#admin-panel-screen tr:nth-child(even) td {
+    background-color: #fefdfb !important;
+}
+
+#admin-panel-screen input,
+#admin-panel-screen textarea,
+#admin-panel-screen select,
+#admin-panel-screen [class*="cell"],
+#admin-panel-screen [class*="table"] {
+    background-color: #fffaf3 !important;
+    color: #191816 !important;
+    -webkit-text-fill-color: #191816 !important;
+}
+
+#admin-gate-screen .block,
+#admin-gate-screen input,
+#admin-gate-screen textarea {
+    background-color: #ffffff !important;
+    color: #191816 !important;
+}
+
 .gradio-container table,
 .gradio-container table thead,
 .gradio-container table tbody,
@@ -1262,7 +1323,9 @@ body.dark,
 #main-row {
     display: grid !important;
     grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-    grid-template-areas: "upload results";
+    grid-template-areas:
+        "upload results"
+        "finish results";
     gap: 26px;
     align-items: flex-start;
 }
@@ -1271,15 +1334,9 @@ body.dark,
     grid-area: upload;
 }
 
-#search-row {
-    margin: 10px 0 0 0;
-    justify-content: flex-start;
-    align-self: start;
+#upload-col #search-btn {
     width: 100%;
-}
-
-#search-row #search-btn {
-    width: 100%;
+    margin-top: 10px;
 }
 
 #finish-row {
@@ -1304,7 +1361,8 @@ body.dark,
     padding: 18px;
     box-shadow: 0 18px 42px rgba(24, 16, 8, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
     overflow: visible !important;
-    backdrop-filter: blur(3px);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
 }
 
 #results-grid-container {
@@ -1378,6 +1436,15 @@ h1, h2, h3 {
     font-weight: 700;
     font-size: 12px;
 }
+
+#hero .step-num,
+html #hero .step-num { color: #ffffff !important; }
+
+html .mobile-step-num,
+#mobile-instructions .mobile-step-num { color: #ffffff !important; }
+
+html .selection-badge,
+.result-item .selection-badge { color: #ffffff !important; }
 
 #upload-progress {
     font-weight: 600;
@@ -1485,10 +1552,18 @@ h1, h2, h3 {
     white-space: normal !important;
 }
 
+#status-text .prose:empty,
+#submit-status .prose:empty { display: none; }
+#status-text:has(.prose:empty),
+#submit-status:has(.prose:empty) { display: none; }
+
 .results-grid {
     column-count: 2;
     column-gap: 12px;
     padding: 2px;
+    contain: layout style;
+    min-height: 400px;
+    animation: dressaGridFade 0.18s ease both;
 }
 
 .results-grid .result-item,
@@ -1503,7 +1578,8 @@ h1, h2, h3 {
     overflow: hidden !important;
     border: 0 !important;
     outline: none !important;
-    transition: transform 0.12s ease, box-shadow 0.2s ease;
+    transition: box-shadow 0.15s ease;
+    transform: translateZ(0);
     background: #ffffff !important;
     padding: 0 !important;
     box-shadow: 0 8px 20px rgba(97, 51, 29, 0.16) !important;
@@ -1518,11 +1594,12 @@ h1, h2, h3 {
     object-fit: contain !important;
     background: #ffffff !important;
     display: block !important;
+    content-visibility: auto;
+    contain-intrinsic-size: 200px 280px;
 }
 
 .results-grid .result-item:hover,
 .results-grid button.result-item:hover {
-    transform: translateY(-2px);
     box-shadow: 0 10px 24px rgba(97, 51, 29, 0.20) !important;
 }
 
@@ -1814,7 +1891,7 @@ body.dressa-searching #search-overlay {
     display: flex;
 }
 
-body.dressa-searching #search-row {
+body.dressa-searching #search-btn {
     display: none !important;
 }
 
@@ -1966,10 +2043,6 @@ body:not(.dressa-main-active) #submit-btn {
     #submit-btn {
         margin-left: auto !important;
         margin-right: auto !important;
-    }
-
-    #search-row {
-        justify-content: flex-start !important;
     }
 
     #agree-btn,
@@ -2183,6 +2256,7 @@ body:not(.dressa-main-active) #submit-btn {
     body {
         margin: 0 !important;
         padding: 0 !important;
+        overflow-y: auto !important;
     }
 
     body,
@@ -2200,6 +2274,7 @@ body:not(.dressa-main-active) #submit-btn {
     .gradio-container {
         margin: 0 !important;
         padding: 0 0 calc(96px + env(safe-area-inset-bottom)) !important;
+        overflow-y: auto !important;
     }
 
     .main.fillable.app.fill_width,
@@ -2258,11 +2333,12 @@ body:not(.dressa-main-active) #submit-btn {
         grid-template-columns: minmax(0, 1fr) !important;
         grid-template-areas:
             "upload"
+            "finish"
             "results";
         gap: 1px !important;
         align-items: stretch !important;
         margin: 0 !important;
-        padding: var(--mobile-upload-offset, 248px) 0 0 0 !important;
+        padding: 0 !important;
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
@@ -2270,16 +2346,16 @@ body:not(.dressa-main-active) #submit-btn {
     }
 
     #upload-col {
-        position: fixed !important;
-        top: 0 !important;
-        left: 1px !important;
-        right: 1px !important;
-        z-index: 7600 !important;
+        position: static !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        z-index: auto !important;
         align-self: start !important;
         height: fit-content !important;
         justify-self: stretch !important;
         margin: 0 !important;
-        width: auto !important;
+        width: 100% !important;
         max-width: none !important;
         transform: none !important;
         box-sizing: border-box;
@@ -2301,8 +2377,8 @@ body:not(.dressa-main-active) #submit-btn {
         align-items: start;
         align-content: start !important;
         min-height: 0 !important;
-        max-height: 260px !important;
-        overflow: hidden !important;
+        max-height: none !important;
+        overflow: visible !important;
         isolation: isolate !important;
     }
 
@@ -2687,10 +2763,10 @@ body:not(.dressa-main-active) #submit-btn {
         justify-content: center;
     }
 
-    #search-row {
+    #upload-col #search-btn {
         width: 100% !important;
         max-width: 100% !important;
-        margin: 0 !important;
+        margin: 8px 0 0 !important;
         justify-content: center !important;
         box-sizing: border-box !important;
     }
@@ -2816,10 +2892,17 @@ body:not(.dressa-main-active) #submit-btn {
         max-width: 100% !important;
         position: relative !important;
         overflow: visible !important;
+        min-height: 0 !important;
+        height: auto !important;
     }
 
     #results-grid-stage {
         width: 100%;
+        overflow: visible !important;
+    }
+
+    #main-row {
+        overflow: visible !important;
     }
 
     #results-grid-container {
@@ -2833,24 +2916,24 @@ body:not(.dressa-main-active) #submit-btn {
     }
 
     .results-grid {
-        display: block;
-        column-count: 2;
-        column-gap: 8px;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
         padding: 0;
-        animation: dressaGridFade 0.35s ease;
+        animation: none !important;
     }
 
     .result-item {
-        display: inline-block !important;
+        display: block !important;
         width: 100% !important;
-        break-inside: avoid !important;
-        -webkit-column-break-inside: avoid !important;
-        page-break-inside: avoid !important;
+        break-inside: auto !important;
+        -webkit-column-break-inside: auto !important;
+        page-break-inside: auto !important;
         border: none !important;
         border-radius: 22px !important;
         box-shadow: 0 8px 20px rgba(97, 51, 29, 0.16) !important;
         background: #fff !important;
-        margin: 0 0 8px !important;
+        margin: 0 !important;
         overflow: hidden !important;
     }
 
@@ -2889,19 +2972,19 @@ body:not(.dressa-main-active) #submit-btn {
     }
 
     #submit-btn:not(button) {
-        position: fixed !important;
-        left: 50% !important;
+        position: static !important;
+        left: auto !important;
         right: auto !important;
         top: auto !important;
-        transform: translateX(-50%) !important;
-        bottom: calc(62px + env(safe-area-inset-bottom)) !important;
-        width: auto !important;
-        margin: 0 !important;
+        transform: none !important;
+        bottom: auto !important;
+        width: 100% !important;
+        margin: 10px 0 0 0 !important;
         text-align: center !important;
-        z-index: 6505 !important;
+        z-index: auto !important;
         pointer-events: auto !important;
         overflow: visible !important;
-        display: inline-flex !important;
+        display: flex !important;
         justify-content: center !important;
         align-items: center !important;
         box-sizing: border-box !important;
@@ -2909,15 +2992,15 @@ body:not(.dressa-main-active) #submit-btn {
     }
 
     button#submit-btn {
-        position: fixed !important;
-        left: 50% !important;
+        position: static !important;
+        left: auto !important;
         right: auto !important;
         top: auto !important;
-        transform: translateX(-50%) !important;
-        bottom: calc(62px + env(safe-area-inset-bottom)) !important;
-        width: auto !important;
+        transform: none !important;
+        bottom: auto !important;
+        width: 100% !important;
         margin: 0 !important;
-        z-index: 6506 !important;
+        z-index: auto !important;
         pointer-events: auto !important;
     }
 
@@ -3186,21 +3269,7 @@ function resetSelectionOrder() {
 window.__dressa_reset_selection_order = resetSelectionOrder;
 
 function updateMobileUploadOffset() {
-    if (!isCompactLayout()) {
-        document.documentElement.style.removeProperty('--mobile-upload-offset');
-        return;
-    }
-
-    const uploadCol = document.getElementById('upload-col');
-    if (!uploadCol) return;
-
-    const height = Math.ceil(uploadCol.getBoundingClientRect().height || uploadCol.offsetHeight || 0);
-    if (height > 0) {
-        const viewportHeight = Math.max(window.innerHeight || 0, 480);
-        const normalizedHeight = height > 420 ? 252 : (height + 2);
-        const clampedOffset = Math.min(Math.max(normalizedHeight, 220), Math.round(viewportHeight * 0.62));
-        document.documentElement.style.setProperty('--mobile-upload-offset', `${clampedOffset}px`);
-    }
+    document.documentElement.style.removeProperty('--mobile-upload-offset');
 }
 
 function isMainAppVisible() {
@@ -3235,7 +3304,7 @@ function scrollToResultsStart() {
     const uploadHeight = Math.ceil(uploadCol?.getBoundingClientRect().height || 0);
     const containerTop = container.getBoundingClientRect().top + window.scrollY;
     const targetTop = Math.max(0, containerTop - uploadHeight - 6);
-    window.scrollTo({ top: targetTop, behavior: 'smooth' });
+    window.scrollTo({ top: targetTop, behavior: 'auto' });
 }
 
 function dockMobileSubmitButton() {
@@ -3243,6 +3312,7 @@ function dockMobileSubmitButton() {
     if (!submitHost) return;
     const submitHostIsButton = submitHost.matches('button');
     const mainVisible = isMainAppVisible();
+    const shouldDockOnCompact = false;
 
     const submitBtn = submitHostIsButton
         ? submitHost
@@ -3258,7 +3328,7 @@ function dockMobileSubmitButton() {
         window.__dressaSubmitOriginalNextSibling = submitHost.nextSibling || null;
     }
 
-    if (isCompactLayout()) {
+    if (isCompactLayout() && shouldDockOnCompact) {
         if (submitHost.parentElement !== document.body) {
             document.body.appendChild(submitHost);
         }
@@ -3735,6 +3805,7 @@ def create_app():
         gallery_images_state = gr.State(value=[])
         upload_count_state = gr.State(value=0)
         participant_view_state = gr.State(value="consent")
+        prefetch_results_state = gr.State(value=None)  # (gallery_images, filtered_results, image_hash) or None
 
         # ==================== CONSENT SCREEN ====================
         with gr.Column(visible=True, min_width=0, elem_id="consent-screen") as consent_screen:
@@ -3860,11 +3931,17 @@ University of Glasgow - School of Computing Science
                         "Use gallery or camera. If you pick the wrong photo, use the X icon to remove and re-upload.",
                         elem_id="upload-helper",
                     )
+                    search_btn = gr.Button(
+                        "Find Similar Dresses",
+                        variant="primary",
+                        elem_id="search-btn",
+                        interactive=False,
+                    )
                     upload_progress_mobile = gr.Markdown(
                         "Uploads completed: 0 of 3-5 recommended",
                         elem_id="upload-progress-mobile"
                     )
-                    status_text = gr.Markdown("", elem_id="status-text")
+                    status_text = gr.Markdown("", visible=False, elem_id="status-text")
 
                     with gr.Row(elem_id="search-row"):
                         search_btn = gr.Button(
@@ -3884,9 +3961,9 @@ University of Glasgow - School of Computing Science
                         elem_id="submit-btn"
                     )
 
-                    # Finish button (appears after minimum uploads)
-                    with gr.Row(elem_id="finish-row"):
-                        finish_btn = gr.Button("Finish Study", variant="secondary", visible=False, elem_id="finish-btn")
+                # Finish button (appears after minimum uploads)
+                with gr.Row(elem_id="finish-row"):
+                    finish_btn = gr.Button("Finish Study", variant="secondary", visible=False, elem_id="finish-btn")
 
                 # Right column: Results
                 with gr.Column(scale=2, min_width=0, elem_id="results-col"):
@@ -3895,7 +3972,7 @@ University of Glasgow - School of Computing Science
 
                     # Instructions for selection
                     selection_instructions = gr.Markdown(
-                        "Select all images you think are similar. If none are similar, leave all unselected and submit. Tap again to unselect.",
+                        "Select all images you think are similar. **It's okay to submit with 0 selected** — tap again to unselect.",
                         visible=False,
                         elem_id="selection-instructions"
                     )
@@ -3912,7 +3989,7 @@ University of Glasgow - School of Computing Science
                     )
 
                     # Status message
-                    submit_status = gr.Markdown("", elem_id="submit-status")
+                    submit_status = gr.Markdown("", visible=False, elem_id="submit-status")
 
                     with gr.Column(elem_id="results-grid-stage", min_width=0):
                         results_grid_html = gr.HTML(value="", elem_id="results-grid-container")
@@ -4114,17 +4191,17 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 0,     # upload_count_state
                 gr.update(value=None),  # upload_image
                 gr.update(value="Click to upload", visible=True),  # upload_click_hint_mobile
-                gr.update(value=""),  # status_text
+                gr.update(value="", visible=False),  # status_text
                 gr.update(value="Upload a photo, then tap Find Similar Dresses."),  # progress_text
                 gr.update(visible=False),  # selection_instructions
                 gr.update(visible=False, value=""),  # selection_count
                 gr.update(value="[]"),  # selected_indices_input
                 gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),  # submit_btn
-                gr.update(value=""),  # submit_status
+                gr.update(value="", visible=False),  # submit_status
                 gr.update(value=""),  # results_grid_html
                 gr.update(value=reset_progress),  # upload_progress
                 gr.update(value=reset_progress),  # upload_progress_mobile
-                gr.update(interactive=False),  # search_btn
+                gr.update(visible=True, interactive=False),  # search_btn
                 gr.update(visible=False),  # finish_btn
                 "consent",  # participant_view_state
             )
@@ -4165,22 +4242,35 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
 
             return html
 
-        def on_search(image, user_id, upload_id, upload_count):
-            """Handle search button click."""
+        def on_prefetch(image, user_id):
+            """Silently run search on upload so results are ready when button is clicked."""
+            if image is None:
+                return None
+            try:
+                results = search_similar_dresses(image, user_id, "prefetch")
+                filtered_results, gallery_images = filter_results_for_gallery(results)
+                image_hash = compute_image_hash(_normalize_image_for_jpeg(image))
+                return (gallery_images, filtered_results, image_hash)
+            except Exception:
+                logger.exception("Prefetch failed")
+                return None
+
+        def on_reveal_results(image, user_id, upload_id, upload_count, prefetch_state):
+            """Handle search button click, using prefetch data when available."""
             if image is None:
                 return (
                     user_id, upload_id, [], [], [], upload_count,
-                    "",
+                    gr.update(visible=False, value=""),
                     "Upload a photo, then tap Find Similar Dresses.",
                     gr.update(visible=False),
                     gr.update(visible=False),
                     "",
                     "[]",
                     gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
-                    "",
+                    gr.update(visible=False, value=""),
                     f"Uploads completed: {upload_count} of 3-5 recommended",
                     f"Uploads completed: {upload_count} of 3-5 recommended",
-                    gr.update(interactive=False),
+                    gr.update(visible=True, interactive=False),
                     gr.update(visible=upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
 
@@ -4196,26 +4286,39 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 upload_record_created = True
                 logger.info(f"New upload: {next_upload_id} (count: {next_upload_count})")
 
-                # Search for similar dresses
-                results = search_similar_dresses(image, user_id, next_upload_id)
+                # Use prefetch results if available and image matches
+                used_prefetch = False
+                if prefetch_state is not None:
+                    try:
+                        prefetch_gallery, prefetch_filtered, prefetch_hash = prefetch_state
+                        current_hash = compute_image_hash(_normalize_image_for_jpeg(image))
+                        if current_hash == prefetch_hash and prefetch_gallery:
+                            gallery_images = prefetch_gallery
+                            filtered_results = prefetch_filtered
+                            used_prefetch = True
+                            logger.info("Using prefetch results (hash match)")
+                    except Exception:
+                        logger.warning("Prefetch state invalid, falling back to fresh search")
 
-                # Filter results to corpus-only images and build gallery
-                filtered_results, gallery_images = filter_results_for_gallery(results)
+                if not used_prefetch:
+                    # Fallback: run fresh search
+                    results = search_similar_dresses(image, user_id, next_upload_id)
+                    filtered_results, gallery_images = filter_results_for_gallery(results)
 
                 if not gallery_images:
                     return (
                         user_id, next_upload_id, filtered_results, [], [], next_upload_count,
-                        "Search complete, but no corpus images were found.",
+                        gr.update(visible=True, value="Search complete, but no corpus images were found."),
                         "No results found. Try another photo.",
                         gr.update(visible=False),
                         gr.update(visible=False),
                         "",
                         "[]",
                         gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
-                        "",
+                        gr.update(visible=False, value=""),
                         f"Uploads completed: {next_upload_count} of 3-5 recommended",
                         f"Uploads completed: {next_upload_count} of 3-5 recommended",
-                        gr.update(interactive=True),
+                        gr.update(visible=True, interactive=True),
                         gr.update(visible=next_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                     )
 
@@ -4228,17 +4331,17 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
 
                 return (
                     user_id, next_upload_id, filtered_results, [], gallery_images, next_upload_count,
-                    "",
+                    gr.update(visible=False, value=""),
                     progress_msg,
                     gr.update(visible=True),
                     gr.update(visible=True, value=selection_text),
                     grid_html,
                     "[]",
                     gr.update(visible=True, interactive=True, value="Submit Similar Selections (0)"),
-                    "",
+                    gr.update(visible=False, value=""),
                     f"Uploads completed: {next_upload_count} of 3-5 recommended",
                     f"Uploads completed: {next_upload_count} of 3-5 recommended",
-                    gr.update(interactive=True),
+                    gr.update(visible=False, interactive=False),
                     gr.update(visible=next_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
             except Exception:
@@ -4254,26 +4357,41 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 progress_line = f"Uploads completed: {effective_upload_count} of 3-5 recommended"
                 return (
                     user_id, effective_upload_id, [], [], [], effective_upload_count,
-                    "Search failed for this photo. Tap X to re-upload, then try Find Similar Dresses again.",
+                    gr.update(visible=True, value="Search failed for this photo. Tap X to re-upload, then try Find Similar Dresses again."),
                     "Search failed to load results. Please retry.",
                     gr.update(visible=False),
                     gr.update(visible=False, value=""),
                     "",
                     "[]",
                     gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
-                    "",
+                    gr.update(visible=False, value=""),
                     progress_line,
                     progress_line,
-                    gr.update(interactive=True),
+                    gr.update(visible=True, interactive=True),
                     gr.update(visible=effective_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                 )
 
         def on_upload_image_change(image):
-            """Enable search only when an upload is present."""
+            """Enable/disable search button and clear stale results when image removed."""
             has_image = image is not None
+            if has_image:
+                return (
+                    gr.update(visible=True, interactive=True),
+                    gr.update(value="Click to upload", visible=False),
+                    gr.update(),  # results_grid_html unchanged
+                    gr.update(),  # progress_text unchanged
+                    gr.update(),  # submit_btn unchanged
+                    gr.update(),  # selection_instructions unchanged
+                    gr.update(),  # selection_count unchanged
+                )
             return (
-                gr.update(interactive=has_image),
-                gr.update(value="Click to upload", visible=not has_image),
+                gr.update(visible=True, interactive=False),
+                gr.update(value="Click to upload", visible=True),
+                "",  # clear results grid
+                "Upload a photo, then tap Find Similar Dresses.",  # reset progress text
+                gr.update(visible=False),  # hide submit button
+                gr.update(visible=False),  # hide selection instructions
+                gr.update(visible=False),  # hide selection count
             )
 
         def on_selection_change(selected_indices_json, gallery_images):
@@ -4312,7 +4430,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             if not results:
                 logger.warning("No results to rate")
                 return (
-                    "No results to rate.",
+                    gr.update(visible=True, value="No results to rate."),
                     gr.update(visible=False),
                     gr.update(visible=False),
                     [],
@@ -4320,9 +4438,9 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
                     "",
                     "Upload a photo, then tap Find Similar Dresses.",
-                    "",
+                    gr.update(visible=False, value=""),
                     gr.update(value=None),
-                    gr.update(interactive=False),
+                    gr.update(visible=True, interactive=False),
                     gr.update(value="Click to upload", visible=True),
                 )
 
@@ -4374,7 +4492,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             )
 
             return (
-                status,
+                gr.update(visible=True, value=status),
                 gr.update(visible=False),
                 gr.update(visible=False, value=""),
                 [],
@@ -4382,9 +4500,9 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
                 "",
                 "Upload another photo, then tap Find Similar Dresses.",
-                "",
+                gr.update(visible=False, value=""),
                 gr.update(value=None),
-                gr.update(interactive=False),
+                gr.update(visible=True, interactive=False),
                 gr.update(value="Click to upload", visible=True),
             )
 
@@ -4596,11 +4714,24 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             show_progress="hidden",
         )
 
+        # Prefetch triggered silently on every upload change
+        prefetch_dep = upload_image.change(
+            fn=on_prefetch,
+            inputs=[upload_image, user_id_state],
+            outputs=[prefetch_results_state],
+            show_progress="hidden",
+        )
+
         upload_change_dep = upload_image.change(
             fn=on_upload_image_change,
             inputs=[upload_image],
-            outputs=[search_btn, upload_click_hint_mobile],
+            outputs=[
+                search_btn, upload_click_hint_mobile,
+                results_grid_html, progress_text,
+                submit_btn, selection_instructions, selection_count,
+            ],
             show_progress="hidden",
+            cancels=[prefetch_dep],
         )
         upload_change_dep.success(
             fn=None,
@@ -4611,10 +4742,11 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             js="() => { window.__dressa_sync_mobile_labels?.(); }",
         )
 
-        # Search events
+        # Search events — use on_reveal_results which reads from prefetch state
         search_dep = search_btn.click(
-            fn=on_search,
-            inputs=[upload_image, user_id_state, upload_id_state, upload_count_state],
+            fn=on_reveal_results,
+            inputs=[upload_image, user_id_state, upload_id_state, upload_count_state,
+                    prefetch_results_state],
             outputs=[
                 user_id_state, upload_id_state, current_results_state,
                 selected_indices_state, gallery_images_state, upload_count_state,
