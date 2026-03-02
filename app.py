@@ -1309,7 +1309,8 @@ body.dark,
     padding: 18px;
     box-shadow: 0 18px 42px rgba(24, 16, 8, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
     overflow: visible !important;
-    backdrop-filter: blur(3px);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
 }
 
 #results-grid-container {
@@ -2814,24 +2815,24 @@ body:not(.dressa-main-active) #submit-btn {
     }
 
     .results-grid {
-        display: block;
-        column-count: 2;
-        column-gap: 8px;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
         padding: 0;
-        animation: dressaGridFade 0.35s ease;
+        animation: none !important;
     }
 
     .result-item {
-        display: inline-block !important;
+        display: block !important;
         width: 100% !important;
-        break-inside: avoid !important;
-        -webkit-column-break-inside: avoid !important;
-        page-break-inside: avoid !important;
+        break-inside: auto !important;
+        -webkit-column-break-inside: auto !important;
+        page-break-inside: auto !important;
         border: none !important;
         border-radius: 22px !important;
         box-shadow: 0 8px 20px rgba(97, 51, 29, 0.16) !important;
         background: #fff !important;
-        margin: 0 0 8px !important;
+        margin: 0 !important;
         overflow: hidden !important;
     }
 
@@ -3167,21 +3168,7 @@ function resetSelectionOrder() {
 window.__dressa_reset_selection_order = resetSelectionOrder;
 
 function updateMobileUploadOffset() {
-    if (!isCompactLayout()) {
-        document.documentElement.style.removeProperty('--mobile-upload-offset');
-        return;
-    }
-
-    const uploadCol = document.getElementById('upload-col');
-    if (!uploadCol) return;
-
-    const height = Math.ceil(uploadCol.getBoundingClientRect().height || uploadCol.offsetHeight || 0);
-    if (height > 0) {
-        const viewportHeight = Math.max(window.innerHeight || 0, 480);
-        const normalizedHeight = height > 420 ? 252 : (height + 2);
-        const clampedOffset = Math.min(Math.max(normalizedHeight, 220), Math.round(viewportHeight * 0.62));
-        document.documentElement.style.setProperty('--mobile-upload-offset', `${clampedOffset}px`);
-    }
+    document.documentElement.style.removeProperty('--mobile-upload-offset');
 }
 
 function isMainAppVisible() {
@@ -3216,7 +3203,7 @@ function scrollToResultsStart() {
     const uploadHeight = Math.ceil(uploadCol?.getBoundingClientRect().height || 0);
     const containerTop = container.getBoundingClientRect().top + window.scrollY;
     const targetTop = Math.max(0, containerTop - uploadHeight - 6);
-    window.scrollTo({ top: targetTop, behavior: 'smooth' });
+    window.scrollTo({ top: targetTop, behavior: 'auto' });
 }
 
 function dockMobileSubmitButton() {
