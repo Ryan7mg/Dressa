@@ -1262,10 +1262,7 @@ body.dark,
 #main-row {
     display: grid !important;
     grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-    grid-template-areas:
-        "upload results"
-        "search results"
-        "finish results";
+    grid-template-areas: "upload results";
     gap: 26px;
     align-items: flex-start;
 }
@@ -1275,27 +1272,25 @@ body.dark,
 }
 
 #search-row {
-    grid-area: search;
-    margin: 0;
+    margin: 10px 0 0 0;
     justify-content: flex-start;
     align-self: start;
     width: 100%;
 }
 
 #search-row #search-btn {
-    width: min(360px, 100%);
+    width: 100%;
 }
 
 #finish-row {
-    grid-area: finish;
-    margin: 0;
+    margin: 10px 0 0 0;
     justify-content: flex-start;
     align-self: start;
     width: 100%;
 }
 
 #finish-row #finish-btn {
-    width: min(360px, 100%);
+    width: 100%;
 }
 
 #results-col {
@@ -1548,9 +1543,7 @@ h1, h2, h3 {
 }
 
 #submit-btn {
-    position: sticky;
-    bottom: 18px;
-    z-index: 60;
+    position: static;
     margin-top: 8px;
 }
 
@@ -1976,7 +1969,7 @@ body:not(.dressa-main-active) #submit-btn {
     }
 
     #search-row {
-        justify-content: center !important;
+        justify-content: flex-start !important;
     }
 
     #agree-btn,
@@ -1996,11 +1989,13 @@ body:not(.dressa-main-active) #submit-btn {
     }
 
     #upload-col {
-        position: sticky !important;
-        top: 10px !important;
+        position: static !important;
+        top: auto !important;
         align-self: start !important;
     }
 
+    #upload-col #search-btn,
+    #upload-col #finish-btn,
     #upload-col #submit-btn {
         position: static !important;
         bottom: auto !important;
@@ -2012,6 +2007,8 @@ body:not(.dressa-main-active) #submit-btn {
     }
 
     #upload-col #submit-btn button,
+    #upload-col #search-btn button,
+    #upload-col #finish-btn button,
     #upload-col #submit-btn > button {
         width: min(330px, 100%) !important;
         min-width: 280px !important;
@@ -2261,8 +2258,6 @@ body:not(.dressa-main-active) #submit-btn {
         grid-template-columns: minmax(0, 1fr) !important;
         grid-template-areas:
             "upload"
-            "search"
-            "finish"
             "results";
         gap: 1px !important;
         align-items: stretch !important;
@@ -3644,6 +3639,20 @@ if (!window.__dressaSubmitSyncAttached) {
         if (!submit) return;
         const selected = syncSelectedIndicesToInput();
         updateSelectionUi(selected);
+
+        const resultCount = getVisibleResultCount();
+        if (resultCount > 0 && selected.length === 0) {
+            const proceed = window.confirm(
+                'No similar dresses selected. Are you sure none of these dresses are similar and want to submit?'
+            );
+            if (!proceed) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                return;
+            }
+        }
+
         window.__dressa_start_participant_loader?.();
     }, true);
     window.__dressaSubmitSyncAttached = true;
@@ -3857,6 +3866,14 @@ University of Glasgow - School of Computing Science
                     )
                     status_text = gr.Markdown("", elem_id="status-text")
 
+                    with gr.Row(elem_id="search-row"):
+                        search_btn = gr.Button(
+                            "Find Similar Dresses",
+                            variant="primary",
+                            elem_id="search-btn",
+                            interactive=False,
+                        )
+
                     # Submit button (desktop: sits in upload column; mobile: JS docks fixed)
                     submit_btn = gr.Button(
                         "Submit Similar Selections (0)",
@@ -3867,17 +3884,9 @@ University of Glasgow - School of Computing Science
                         elem_id="submit-btn"
                     )
 
-                with gr.Row(elem_id="search-row"):
-                    search_btn = gr.Button(
-                        "Find Similar Dresses",
-                        variant="primary",
-                        elem_id="search-btn",
-                        interactive=False,
-                    )
-
-                # Finish button (appears after minimum uploads)
-                with gr.Row(elem_id="finish-row"):
-                    finish_btn = gr.Button("Finish Study", variant="secondary", visible=False, elem_id="finish-btn")
+                    # Finish button (appears after minimum uploads)
+                    with gr.Row(elem_id="finish-row"):
+                        finish_btn = gr.Button("Finish Study", variant="secondary", visible=False, elem_id="finish-btn")
 
                 # Right column: Results
                 with gr.Column(scale=2, min_width=0, elem_id="results-col"):
@@ -3886,7 +3895,7 @@ University of Glasgow - School of Computing Science
 
                     # Instructions for selection
                     selection_instructions = gr.Markdown(
-                        "Select all images you think are similar. Tap again to unselect.",
+                        "Select all images you think are similar. If none are similar, leave all unselected and submit. Tap again to unselect.",
                         visible=False,
                         elem_id="selection-instructions"
                     )
@@ -4210,7 +4219,10 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                         gr.update(visible=next_upload_count >= MIN_UPLOADS_FOR_DEBRIEF)
                     )
 
-                progress_msg = f"Found **{len(gallery_images)}** similar dresses. Select all matching images, then submit."
+                progress_msg = (
+                    f"Found **{len(gallery_images)}** similar dresses. Select all matching images, then submit. "
+                    "If none are similar, submit with 0 selected."
+                )
                 selection_text = f"Selected: 0 of {len(gallery_images)}"
                 grid_html = generate_results_grid_html(gallery_images, [])
 
