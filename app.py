@@ -1385,6 +1385,15 @@ h1, h2, h3 {
     font-size: 12px;
 }
 
+#hero .step-num,
+html #hero .step-num { color: #ffffff !important; }
+
+html .mobile-step-num,
+#mobile-instructions .mobile-step-num { color: #ffffff !important; }
+
+html .selection-badge,
+.result-item .selection-badge { color: #ffffff !important; }
+
 #upload-progress {
     font-weight: 600;
     color: var(--muted);
@@ -1464,6 +1473,11 @@ h1, h2, h3 {
 #status-text, #progress-text, #submit-status {
     white-space: normal !important;
 }
+
+#status-text .prose:empty,
+#submit-status .prose:empty { display: none; }
+#status-text:has(.prose:empty),
+#submit-status:has(.prose:empty) { display: none; }
 
 .results-grid {
     column-count: 2;
@@ -3819,7 +3833,7 @@ University of Glasgow - School of Computing Science
                         "Uploads completed: 0 of 3-5 recommended",
                         elem_id="upload-progress-mobile"
                     )
-                    status_text = gr.Markdown("", elem_id="status-text")
+                    status_text = gr.Markdown("", visible=False, elem_id="status-text")
 
                     # Submit button (desktop: sits in upload column; mobile: JS docks fixed)
                     submit_btn = gr.Button(
@@ -3850,7 +3864,7 @@ University of Glasgow - School of Computing Science
 
                     # Instructions for selection
                     selection_instructions = gr.Markdown(
-                        "Select all images you think are similar. If none are similar, leave all unselected and submit. Tap again to unselect.",
+                        "Select all images you think are similar. **It's okay to submit with 0 selected** — tap again to unselect.",
                         visible=False,
                         elem_id="selection-instructions"
                     )
@@ -3867,7 +3881,7 @@ University of Glasgow - School of Computing Science
                     )
 
                     # Status message
-                    submit_status = gr.Markdown("", elem_id="submit-status")
+                    submit_status = gr.Markdown("", visible=False, elem_id="submit-status")
 
                     with gr.Column(elem_id="results-grid-stage", min_width=0):
                         results_grid_html = gr.HTML(value="", elem_id="results-grid-container")
@@ -4069,13 +4083,13 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 0,     # upload_count_state
                 gr.update(value=None),  # upload_image
                 gr.update(value="Click to upload", visible=True),  # upload_click_hint_mobile
-                gr.update(value=""),  # status_text
+                gr.update(value="", visible=False),  # status_text
                 gr.update(value="Upload a photo, then tap Find Similar Dresses."),  # progress_text
                 gr.update(visible=False),  # selection_instructions
                 gr.update(visible=False, value=""),  # selection_count
                 gr.update(value="[]"),  # selected_indices_input
                 gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),  # submit_btn
-                gr.update(value=""),  # submit_status
+                gr.update(value="", visible=False),  # submit_status
                 gr.update(value=""),  # results_grid_html
                 gr.update(value=reset_progress),  # upload_progress
                 gr.update(value=reset_progress),  # upload_progress_mobile
@@ -4125,14 +4139,14 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             if image is None:
                 return (
                     user_id, upload_id, [], [], [], upload_count,
-                    "",
+                    gr.update(visible=False, value=""),
                     "Upload a photo, then tap Find Similar Dresses.",
                     gr.update(visible=False),
                     gr.update(visible=False),
                     "",
                     "[]",
                     gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
-                    "",
+                    gr.update(visible=False, value=""),
                     f"Uploads completed: {upload_count} of 3-5 recommended",
                     f"Uploads completed: {upload_count} of 3-5 recommended",
                     gr.update(visible=True, interactive=False),
@@ -4160,14 +4174,14 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 if not gallery_images:
                     return (
                         user_id, next_upload_id, filtered_results, [], [], next_upload_count,
-                        "Search complete, but no corpus images were found.",
+                        gr.update(visible=True, value="Search complete, but no corpus images were found."),
                         "No results found. Try another photo.",
                         gr.update(visible=False),
                         gr.update(visible=False),
                         "",
                         "[]",
                         gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
-                        "",
+                        gr.update(visible=False, value=""),
                         f"Uploads completed: {next_upload_count} of 3-5 recommended",
                         f"Uploads completed: {next_upload_count} of 3-5 recommended",
                         gr.update(visible=True, interactive=True),
@@ -4183,14 +4197,14 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
 
                 return (
                     user_id, next_upload_id, filtered_results, [], gallery_images, next_upload_count,
-                    "",
+                    gr.update(visible=False, value=""),
                     progress_msg,
                     gr.update(visible=True),
                     gr.update(visible=True, value=selection_text),
                     grid_html,
                     "[]",
                     gr.update(visible=True, interactive=True, value="Submit Similar Selections (0)"),
-                    "",
+                    gr.update(visible=False, value=""),
                     f"Uploads completed: {next_upload_count} of 3-5 recommended",
                     f"Uploads completed: {next_upload_count} of 3-5 recommended",
                     gr.update(visible=False, interactive=False),
@@ -4209,14 +4223,14 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 progress_line = f"Uploads completed: {effective_upload_count} of 3-5 recommended"
                 return (
                     user_id, effective_upload_id, [], [], [], effective_upload_count,
-                    "Search failed for this photo. Tap X to re-upload, then try Find Similar Dresses again.",
+                    gr.update(visible=True, value="Search failed for this photo. Tap X to re-upload, then try Find Similar Dresses again."),
                     "Search failed to load results. Please retry.",
                     gr.update(visible=False),
                     gr.update(visible=False, value=""),
                     "",
                     "[]",
                     gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
-                    "",
+                    gr.update(visible=False, value=""),
                     progress_line,
                     progress_line,
                     gr.update(visible=True, interactive=True),
@@ -4267,7 +4281,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             if not results:
                 logger.warning("No results to rate")
                 return (
-                    "No results to rate.",
+                    gr.update(visible=True, value="No results to rate."),
                     gr.update(visible=False),
                     gr.update(visible=False),
                     [],
@@ -4275,7 +4289,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                     gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
                     "",
                     "Upload a photo, then tap Find Similar Dresses.",
-                    "",
+                    gr.update(visible=False, value=""),
                     gr.update(value=None),
                     gr.update(visible=True, interactive=False),
                     gr.update(value="Click to upload", visible=True),
@@ -4329,7 +4343,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             )
 
             return (
-                status,
+                gr.update(visible=True, value=status),
                 gr.update(visible=False),
                 gr.update(visible=False, value=""),
                 [],
@@ -4337,7 +4351,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 gr.update(visible=False, interactive=False, value="Submit Similar Selections (0)"),
                 "",
                 "Upload another photo, then tap Find Similar Dresses.",
-                "",
+                gr.update(visible=False, value=""),
                 gr.update(value=None),
                 gr.update(visible=True, interactive=False),
                 gr.update(value="Click to upload", visible=True),
