@@ -2160,6 +2160,7 @@ body:not(.dressa-main-active) #submit-btn {
     body {
         margin: 0 !important;
         padding: 0 !important;
+        overflow-y: auto !important;
     }
 
     body,
@@ -2177,6 +2178,7 @@ body:not(.dressa-main-active) #submit-btn {
     .gradio-container {
         margin: 0 !important;
         padding: 0 0 calc(96px + env(safe-area-inset-bottom)) !important;
+        overflow-y: auto !important;
     }
 
     .main.fillable.app.fill_width,
@@ -2241,7 +2243,7 @@ body:not(.dressa-main-active) #submit-btn {
         gap: 1px !important;
         align-items: stretch !important;
         margin: 0 !important;
-        padding: var(--mobile-upload-offset, 248px) 0 0 0 !important;
+        padding: 0 !important;
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
@@ -2249,16 +2251,16 @@ body:not(.dressa-main-active) #submit-btn {
     }
 
     #upload-col {
-        position: fixed !important;
-        top: 0 !important;
-        left: 1px !important;
-        right: 1px !important;
-        z-index: 7600 !important;
+        position: static !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        z-index: auto !important;
         align-self: start !important;
         height: fit-content !important;
         justify-self: stretch !important;
         margin: 0 !important;
-        width: auto !important;
+        width: 100% !important;
         max-width: none !important;
         transform: none !important;
         box-sizing: border-box;
@@ -2280,8 +2282,8 @@ body:not(.dressa-main-active) #submit-btn {
         align-items: start;
         align-content: start !important;
         min-height: 0 !important;
-        max-height: 260px !important;
-        overflow: hidden !important;
+        max-height: none !important;
+        overflow: visible !important;
         isolation: isolate !important;
     }
 
@@ -2868,19 +2870,19 @@ body:not(.dressa-main-active) #submit-btn {
     }
 
     #submit-btn:not(button) {
-        position: fixed !important;
-        left: 50% !important;
+        position: static !important;
+        left: auto !important;
         right: auto !important;
         top: auto !important;
-        transform: translateX(-50%) !important;
-        bottom: calc(62px + env(safe-area-inset-bottom)) !important;
-        width: auto !important;
-        margin: 0 !important;
+        transform: none !important;
+        bottom: auto !important;
+        width: 100% !important;
+        margin: 10px 0 0 0 !important;
         text-align: center !important;
-        z-index: 6505 !important;
+        z-index: auto !important;
         pointer-events: auto !important;
         overflow: visible !important;
-        display: inline-flex !important;
+        display: flex !important;
         justify-content: center !important;
         align-items: center !important;
         box-sizing: border-box !important;
@@ -2888,15 +2890,15 @@ body:not(.dressa-main-active) #submit-btn {
     }
 
     button#submit-btn {
-        position: fixed !important;
-        left: 50% !important;
+        position: static !important;
+        left: auto !important;
         right: auto !important;
         top: auto !important;
-        transform: translateX(-50%) !important;
-        bottom: calc(62px + env(safe-area-inset-bottom)) !important;
-        width: auto !important;
+        transform: none !important;
+        bottom: auto !important;
+        width: 100% !important;
         margin: 0 !important;
-        z-index: 6506 !important;
+        z-index: auto !important;
         pointer-events: auto !important;
     }
 
@@ -3222,6 +3224,7 @@ function dockMobileSubmitButton() {
     if (!submitHost) return;
     const submitHostIsButton = submitHost.matches('button');
     const mainVisible = isMainAppVisible();
+    const shouldDockOnCompact = false;
 
     const submitBtn = submitHostIsButton
         ? submitHost
@@ -3237,7 +3240,7 @@ function dockMobileSubmitButton() {
         window.__dressaSubmitOriginalNextSibling = submitHost.nextSibling || null;
     }
 
-    if (isCompactLayout()) {
+    if (isCompactLayout() && shouldDockOnCompact) {
         if (submitHost.parentElement !== document.body) {
             document.body.appendChild(submitHost);
         }
