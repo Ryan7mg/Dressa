@@ -2981,6 +2981,7 @@ body:not(.dressa-main-active) #submit-btn {
         display: flex;
     }
 
+    button#submit-btn,
     #submit-btn {
         position: sticky !important;
         bottom: calc(60px + env(safe-area-inset-bottom)) !important;
