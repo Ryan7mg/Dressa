@@ -1562,6 +1562,7 @@ html .selection-badge,
 #submit-status:has(.prose:empty) { display: none; }
 
 .results-grid {
+    display: block;
     column-count: 2;
     column-gap: 12px;
     padding: 2px;
@@ -1572,6 +1573,8 @@ html .selection-badge,
     position: relative;
     display: block;
     width: 100%;
+    height: auto !important;
+    min-height: 0 !important;
     margin: 0 0 12px;
     break-inside: avoid;
     cursor: pointer;
@@ -1591,9 +1594,8 @@ html .selection-badge,
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
-    object-fit: contain !important;
-    background: #ffffff !important;
     display: block !important;
+    vertical-align: top !important;
 }
 
 .results-grid .result-item:hover,
@@ -1608,7 +1610,8 @@ html .selection-badge,
 }
 
 .result-item .select-chip,
-.result-item .index-badge {
+.result-item .index-badge,
+.result-item .selection-badge:not(.visible) {
     display: none !important;
 }
 
@@ -2921,6 +2924,8 @@ body:not(.dressa-main-active) #submit-btn {
     .result-item {
         display: block !important;
         width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
         break-inside: avoid !important;
         -webkit-column-break-inside: avoid !important;
         page-break-inside: avoid !important;
@@ -2928,7 +2933,7 @@ body:not(.dressa-main-active) #submit-btn {
         border-radius: 22px !important;
         box-shadow: 0 8px 20px rgba(97, 51, 29, 0.16) !important;
         background: #fff !important;
-        margin: 0 !important;
+        margin: 0 0 8px !important;
         overflow: hidden !important;
     }
 
@@ -2937,7 +2942,8 @@ body:not(.dressa-main-active) #submit-btn {
         height: auto !important;
         min-height: 0 !important;
         max-height: none !important;
-        object-fit: contain !important;
+        display: block !important;
+        vertical-align: top !important;
     }
 
     .result-item.selected {
