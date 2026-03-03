@@ -1562,9 +1562,8 @@ html .selection-badge,
 #submit-status:has(.prose:empty) { display: none; }
 
 .results-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    column-count: 2;
+    column-gap: 12px;
     padding: 2px;
 }
 
@@ -1573,7 +1572,8 @@ html .selection-badge,
     position: relative;
     display: block;
     width: 100%;
-    margin: 0;
+    margin: 0 0 12px;
+    break-inside: avoid;
     cursor: pointer;
     border-radius: 22px !important;
     overflow: hidden !important;
@@ -1612,15 +1612,12 @@ html .selection-badge,
     display: none !important;
 }
 
-#submit-btn button,
-#submit-btn {
-    width: auto !important;
-}
-
 #submit-btn {
     position: static;
-    margin-top: 8px;
+    margin-top: 16px;
+    width: 100%;
 }
+#submit-btn button { width: 100% !important; }
 
 button#agree-btn,
 #agree-btn button,
@@ -1976,13 +1973,13 @@ body:not(.dressa-main-active) #submit-btn {
 
 @media (min-width: 860px) {
     .results-grid {
-        grid-template-columns: repeat(3, 1fr);
+        column-count: 3;
     }
 }
 
 @media (min-width: 1200px) {
     .results-grid {
-        grid-template-columns: repeat(4, 1fr);
+        column-count: 4;
     }
 }
 
@@ -2910,13 +2907,13 @@ body:not(.dressa-main-active) #submit-btn {
         width: 100% !important;
         margin: 0 !important;
         box-sizing: border-box;
-        padding: 0 6px calc(146px + env(safe-area-inset-bottom));
+        padding: 0 6px 16px;
     }
 
     .results-grid {
-        display: grid !important;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
+        column-count: 2 !important;
+        column-gap: 8px !important;
+        display: block !important;
         padding: 0;
         animation: none !important;
     }
@@ -2924,9 +2921,9 @@ body:not(.dressa-main-active) #submit-btn {
     .result-item {
         display: block !important;
         width: 100% !important;
-        break-inside: auto !important;
-        -webkit-column-break-inside: auto !important;
-        page-break-inside: auto !important;
+        break-inside: avoid !important;
+        -webkit-column-break-inside: avoid !important;
+        page-break-inside: avoid !important;
         border: none !important;
         border-radius: 22px !important;
         box-shadow: 0 8px 20px rgba(97, 51, 29, 0.16) !important;
@@ -2969,37 +2966,16 @@ body:not(.dressa-main-active) #submit-btn {
         display: flex;
     }
 
-    #submit-btn:not(button) {
-        position: static !important;
-        left: auto !important;
-        right: auto !important;
-        top: auto !important;
-        transform: none !important;
-        bottom: auto !important;
+    #submit-btn {
+        position: sticky !important;
+        bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+        z-index: 200 !important;
         width: 100% !important;
-        margin: 10px 0 0 0 !important;
-        text-align: center !important;
-        z-index: auto !important;
-        pointer-events: auto !important;
-        overflow: visible !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        box-sizing: border-box !important;
-        padding: 0 !important;
-    }
-
-    button#submit-btn {
-        position: static !important;
-        left: auto !important;
-        right: auto !important;
-        top: auto !important;
-        transform: none !important;
-        bottom: auto !important;
-        width: 100% !important;
-        margin: 0 !important;
-        z-index: auto !important;
-        pointer-events: auto !important;
+        margin-top: 12px !important;
+        padding: 8px 0 !important;
+        background: linear-gradient(to top, rgba(254,253,251,0.92) 70%, transparent) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
     }
 
     button#submit-btn,
@@ -3942,16 +3918,6 @@ University of Glasgow - School of Computing Science
                     )
                     status_text = gr.Markdown("", visible=False, elem_id="status-text")
 
-                    # Submit button (desktop: sits in upload column; mobile: JS docks fixed)
-                    submit_btn = gr.Button(
-                        "Submit Similar Selections (0)",
-                        variant="primary",
-                        size="lg",
-                        visible=False,
-                        interactive=True,
-                        elem_id="submit-btn"
-                    )
-
                 # Finish button (appears after minimum uploads)
                 with gr.Row(elem_id="finish-row"):
                     finish_btn = gr.Button("Finish Study", variant="secondary", visible=False, elem_id="finish-btn")
@@ -3984,6 +3950,14 @@ University of Glasgow - School of Computing Science
 
                     with gr.Column(elem_id="results-grid-stage", min_width=0):
                         results_grid_html = gr.HTML(value="", elem_id="results-grid-container")
+                        submit_btn = gr.Button(
+                            "Submit Similar Selections (0)",
+                            variant="primary",
+                            size="lg",
+                            visible=False,
+                            interactive=True,
+                            elem_id="submit-btn"
+                        )
 
             mobile_bottom_nav = gr.Button("Dressa", elem_id="mobile-bottom-nav")
 
