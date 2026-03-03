@@ -1266,6 +1266,15 @@ body.dark .gradio-container *,
     color: #191816 !important;
 }
 
+#upload-image .upload-container,
+#upload-image label.upload,
+#upload-image .upload,
+#upload-image .wrap {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 #consent-screen,
 #consent-screen .gr-markdown,
 #consent-screen .gr-markdown h1,
@@ -2910,7 +2919,7 @@ body:not(.dressa-main-active) #submit-btn {
         width: 100% !important;
         margin: 0 !important;
         box-sizing: border-box;
-        padding: 0 6px 16px;
+        padding: 0 6px calc(136px + env(safe-area-inset-bottom));
     }
 
     .results-grid {
@@ -2974,8 +2983,8 @@ body:not(.dressa-main-active) #submit-btn {
 
     #submit-btn {
         position: sticky !important;
-        bottom: calc(16px + env(safe-area-inset-bottom)) !important;
-        z-index: 200 !important;
+        bottom: calc(60px + env(safe-area-inset-bottom)) !important;
+        z-index: 6450 !important;
         width: 100% !important;
         margin-top: 12px !important;
         padding: 8px 0 !important;
@@ -2987,7 +2996,6 @@ body:not(.dressa-main-active) #submit-btn {
     button#submit-btn,
     #submit-btn button,
     #submit-btn > button {
-        position: relative !important;
         overflow: hidden;
         display: flex !important;
         align-items: center;
