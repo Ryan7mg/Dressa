@@ -1112,6 +1112,7 @@ body, .gradio-container {
 html,
 body {
     color-scheme: light !important;
+    background-color: #fefdfb !important;
 }
 
 .gradio-container {
@@ -1561,8 +1562,9 @@ html .selection-badge,
 #submit-status:has(.prose:empty) { display: none; }
 
 .results-grid {
-    column-count: 2;
-    column-gap: 12px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
     padding: 2px;
 }
 
@@ -1571,8 +1573,7 @@ html .selection-badge,
     position: relative;
     display: block;
     width: 100%;
-    margin: 0 0 12px;
-    break-inside: avoid;
+    margin: 0;
     cursor: pointer;
     border-radius: 22px !important;
     overflow: hidden !important;
@@ -1975,13 +1976,13 @@ body:not(.dressa-main-active) #submit-btn {
 
 @media (min-width: 860px) {
     .results-grid {
-        column-count: 3;
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 
 @media (min-width: 1200px) {
     .results-grid {
-        column-count: 4;
+        grid-template-columns: repeat(4, 1fr);
     }
 }
 
@@ -3910,6 +3911,7 @@ University of Glasgow - School of Computing Science
                     gr.Markdown("### 1. Upload Your Dress")
                     upload_image = gr.Image(
                         label="Upload a dress photo",
+                        show_label=False,
                         type="numpy",
                         sources=["upload"],
                         elem_id="upload-image"
@@ -4703,14 +4705,7 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
             show_progress="hidden",
         )
 
-        # Prefetch triggered silently on every upload change
-        prefetch_dep = upload_image.change(
-            fn=on_prefetch,
-            inputs=[upload_image, user_id_state],
-            outputs=[prefetch_results_state],
-            show_progress="hidden",
-        )
-
+        # Enable/disable button immediately when image changes (must be defined first so it runs before prefetch)
         upload_change_dep = upload_image.change(
             fn=on_upload_image_change,
             inputs=[upload_image],
@@ -4720,7 +4715,14 @@ You helped test 4 AI models: OpenAI CLIP, FashionCLIP, Marqo-FashionCLIP, Marqo-
                 submit_btn, selection_instructions, selection_count,
             ],
             show_progress="hidden",
-            cancels=[prefetch_dep],
+        )
+
+        # Prefetch triggered silently after button is enabled
+        prefetch_dep = upload_image.change(
+            fn=on_prefetch,
+            inputs=[upload_image, user_id_state],
+            outputs=[prefetch_results_state],
+            show_progress="hidden",
         )
         upload_change_dep.success(
             fn=None,
