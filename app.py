@@ -2779,9 +2779,11 @@ body:not(.dressa-main-active) #submit-btn {
     }
 
     #upload-col #search-btn {
+        grid-column: 1 / -1 !important;
         width: 100% !important;
         max-width: 100% !important;
         margin: 8px 0 0 !important;
+        display: flex !important;
         justify-content: center !important;
         box-sizing: border-box !important;
     }
@@ -2992,7 +2994,7 @@ body:not(.dressa-main-active) #submit-btn {
     button#submit-btn,
     #submit-btn {
         position: sticky !important;
-        bottom: calc(60px + env(safe-area-inset-bottom)) !important;
+        bottom: calc(90px + env(safe-area-inset-bottom)) !important;
         z-index: 6450 !important;
         width: 100% !important;
         margin-top: 12px !important;
@@ -3017,16 +3019,19 @@ body:not(.dressa-main-active) #submit-btn {
         min-width: min(280px, calc(100vw - 20px)) !important;
         max-width: calc(100vw - 20px) !important;
         padding: 0 50px !important;
-        border: 1px solid rgba(255, 222, 190, 0.72) !important;
+        border: 1px solid rgba(255, 210, 170, 0.55) !important;
         background: linear-gradient(
             150deg,
-            rgba(255, 190, 120, 0.18),
-            rgba(238, 137, 34, 0.24) 55%,
-            rgba(224, 124, 24, 0.20)
+            rgba(255, 255, 255, 0.22),
+            rgba(255, 200, 140, 0.18) 55%,
+            rgba(255, 180, 100, 0.16)
         ) !important;
-        backdrop-filter: blur(26px) saturate(158%) !important;
-        -webkit-backdrop-filter: blur(26px) saturate(158%) !important;
-        box-shadow: 0 14px 22px rgba(224, 128, 27, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.46) !important;
+        backdrop-filter: blur(40px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(40px) saturate(180%) !important;
+        box-shadow: 0 8px 20px rgba(224, 128, 27, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.62), inset 0 -1px 0 rgba(200, 120, 40, 0.12) !important;
+        color: rgba(155, 65, 8, 0.92) !important;
+        font-weight: 500 !important;
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.60) !important;
         pointer-events: auto !important;
         z-index: 6506 !important;
     }
@@ -3330,7 +3335,7 @@ function dockMobileSubmitButton() {
             document.body.appendChild(submitHost);
         }
 
-        const dockBottom = 'calc(62px + env(safe-area-inset-bottom))';
+        const dockBottom = 'calc(90px + env(safe-area-inset-bottom))';
         submitHost.style.setProperty('position', 'fixed', 'important');
         submitHost.style.setProperty('top', 'auto', 'important');
         submitHost.style.setProperty('bottom', dockBottom, 'important');
