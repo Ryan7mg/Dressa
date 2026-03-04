@@ -2087,7 +2087,7 @@ body:not(.dressa-main-active) #submit-btn {
         max-width: none !important;
         margin: 10px 0 0 0 !important;
         display: flex !important;
-        justify-content: flex-start !important;
+        justify-content: center !important;
     }
 
     #upload-col #submit-btn button,
@@ -2099,6 +2099,10 @@ body:not(.dressa-main-active) #submit-btn {
         max-width: 100% !important;
         margin: 0 !important;
         justify-content: center !important;
+    }
+
+    #upload-col #search-btn button {
+        font-weight: 400 !important;
     }
 }
 
