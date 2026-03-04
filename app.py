@@ -3262,7 +3262,21 @@ function resetSelectionOrder() {
 window.__dressa_reset_selection_order = resetSelectionOrder;
 
 function updateMobileUploadOffset() {
-    document.documentElement.style.removeProperty('--mobile-upload-offset');
+    const mainRow = document.getElementById('main-row');
+    if (!isCompactLayout() || !mainRow) {
+        document.documentElement.style.removeProperty('--mobile-upload-offset');
+        mainRow?.style.removeProperty('padding-top');
+        return;
+    }
+    const uploadCol = document.getElementById('upload-col');
+    if (!uploadCol || uploadCol.parentElement !== document.body) {
+        document.documentElement.style.removeProperty('--mobile-upload-offset');
+        mainRow.style.removeProperty('padding-top');
+        return;
+    }
+    const h = uploadCol.offsetHeight;
+    document.documentElement.style.setProperty('--mobile-upload-offset', h + 'px');
+    mainRow.style.setProperty('padding-top', h + 'px', 'important');
 }
 
 function isMainAppVisible() {
@@ -3413,6 +3427,61 @@ function dockMobileSubmitButton() {
 
 window.__dressa_dock_mobile_submit = dockMobileSubmitButton;
 
+function dockMobileUploadCol() {
+    const uploadCol = document.getElementById('upload-col');
+    if (!uploadCol) return;
+    if (!isCompactLayout() || !isMainAppVisible()) {
+        if (uploadCol.dataset.mobileDocked === '1') {
+            const p = window.__dressaUploadOriginalParent;
+            const sib = window.__dressaUploadOriginalNextSibling;
+            if (p) {
+                if (sib && sib.parentNode === p) p.insertBefore(uploadCol, sib);
+                else p.appendChild(uploadCol);
+            }
+            uploadCol.style.removeProperty('position');
+            uploadCol.style.removeProperty('top');
+            uploadCol.style.removeProperty('left');
+            uploadCol.style.removeProperty('right');
+            uploadCol.style.removeProperty('width');
+            uploadCol.style.removeProperty('z-index');
+            uploadCol.style.removeProperty('border-radius');
+            uploadCol.style.removeProperty('box-sizing');
+            delete uploadCol.dataset.mobileDocked;
+            updateMobileUploadOffset();
+        }
+        return;
+    }
+    if (!window.__dressaUploadOriginalParent) {
+        window.__dressaUploadOriginalParent = uploadCol.parentElement;
+        window.__dressaUploadOriginalNextSibling = uploadCol.nextSibling;
+    }
+    if (uploadCol.parentElement !== document.body) {
+        document.body.appendChild(uploadCol);
+    }
+    uploadCol.style.setProperty('position', 'fixed', 'important');
+    uploadCol.style.setProperty('top', '0', 'important');
+    uploadCol.style.setProperty('left', '0', 'important');
+    uploadCol.style.setProperty('right', '0', 'important');
+    uploadCol.style.setProperty('width', '100%', 'important');
+    uploadCol.style.setProperty('z-index', '6300', 'important');
+    uploadCol.style.setProperty('border-radius', '0 0 22px 22px', 'important');
+    uploadCol.style.setProperty('box-sizing', 'border-box', 'important');
+    uploadCol.dataset.mobileDocked = '1';
+    updateMobileUploadOffset();
+}
+
+function dockMobileNavBar() {
+    if (!isCompactLayout()) return;
+    const nav = document.getElementById('mobile-bottom-nav');
+    if (!nav || nav.parentElement === document.body) return;
+    document.body.appendChild(nav);
+    nav.style.setProperty('position', 'fixed', 'important');
+    nav.style.setProperty('bottom', '0', 'important');
+    nav.style.setProperty('left', '50%', 'important');
+    nav.style.setProperty('transform', 'translateX(-50%)', 'important');
+    nav.style.setProperty('z-index', '6400', 'important');
+}
+
 function syncMobileLabels() {
     const resultCount = getVisibleResultCount();
     const mainVisible = isMainAppVisible();
@@ -3447,6 +3516,8 @@ function syncMobileLabels() {
     if (!isCompactLayout()) {
         updateMobileUploadOffset();
         dockMobileSubmitButton();
+        dockMobileUploadCol();
+        dockMobileNavBar();
         return;
     }
     const searchBtn = document.querySelector('#search-btn button') || document.querySelector('#search-btn');
@@ -3462,6 +3533,8 @@ function syncMobileLabels() {
     }
     updateMobileUploadOffset();
     dockMobileSubmitButton();
+    dockMobileUploadCol();
+    dockMobileNavBar();
 }
 
 window.__dressa_sync_mobile_labels = syncMobileLabels;
@@ -3524,6 +3597,8 @@ function updateSelectionUi(selected) {
     }
     updateMobileUploadOffset();
     dockMobileSubmitButton();
+    dockMobileUploadCol();
+    dockMobileNavBar();
 
     const countLabel = document.getElementById('selection-count');
     if (countLabel) {
@@ -3625,6 +3700,28 @@ function attachMainScreenObserver() {
     window.__dressaMainScreenObserverAttached = true;
 }
 
+function attachBodyChildWatcher() {
+    if (window.__dressaBodyChildWatcherAttached) return;
+    const ids = { 'submit-btn': dockMobileSubmitButton, 'upload-col': dockMobileUploadCol, 'mobile-bottom-nav': dockMobileNavBar };
+    const obs = new MutationObserver((mutations) => {
+        if (!isCompactLayout()) return;
+        for (const m of mutations) {
+            for (const node of m.addedNodes) {
+                if (node.nodeType !== 1) continue;
+                for (const [id, fn] of Object.entries(ids)) {
+                    const el = node.id === id ? node : node.querySelector?.('#' + id);
+                    if (el && el.parentElement !== document.body) {
+                        window.requestAnimationFrame(fn);
+                        break;
+                    }
+                }
+            }
+        }
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+    window.__dressaBodyChildWatcherAttached = true;
+}
+
 function enforceMobileMainPadding() {
     const main = document.querySelector('div.main.fillable.app.fill_width');
     if (!main) return;
@@ -3648,16 +3745,22 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', attachResultsObserver, { once: true });
     document.addEventListener('DOMContentLoaded', attachUploadColObserver, { once: true });
     document.addEventListener('DOMContentLoaded', attachMainScreenObserver, { once: true });
+    document.addEventListener('DOMContentLoaded', attachBodyChildWatcher, { once: true });
     document.addEventListener('DOMContentLoaded', syncMobileLabels, { once: true });
     document.addEventListener('DOMContentLoaded', updateMobileUploadOffset, { once: true });
     document.addEventListener('DOMContentLoaded', dockMobileSubmitButton, { once: true });
+    document.addEventListener('DOMContentLoaded', dockMobileUploadCol, { once: true });
+    document.addEventListener('DOMContentLoaded', dockMobileNavBar, { once: true });
 } else {
     attachResultsObserver();
     attachUploadColObserver();
     attachMainScreenObserver();
+    attachBodyChildWatcher();
     syncMobileLabels();
     updateMobileUploadOffset();
     dockMobileSubmitButton();
+    dockMobileUploadCol();
+    dockMobileNavBar();
 }
 
 if (!window.__dressaMainPaddingWatcherAttached) {
@@ -3669,6 +3772,10 @@ if (!window.__dressaMainPaddingWatcherAttached) {
     window.addEventListener('orientationchange', updateMobileUploadOffset, { passive: true });
     window.addEventListener('resize', dockMobileSubmitButton, { passive: true });
     window.addEventListener('orientationchange', dockMobileSubmitButton, { passive: true });
+    window.addEventListener('resize', dockMobileUploadCol, { passive: true });
+    window.addEventListener('orientationchange', dockMobileUploadCol, { passive: true });
+    window.addEventListener('resize', dockMobileNavBar, { passive: true });
+    window.addEventListener('orientationchange', dockMobileNavBar, { passive: true });
     window.__dressaMainPaddingWatcherAttached = true;
 }
 
