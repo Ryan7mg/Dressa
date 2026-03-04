@@ -2101,9 +2101,6 @@ body:not(.dressa-main-active) #submit-btn {
         justify-content: center !important;
     }
 
-    #upload-col #search-btn button {
-        font-weight: 400 !important;
-    }
 }
 
 @media (max-width: 1024px) {
@@ -2788,6 +2785,10 @@ body:not(.dressa-main-active) #submit-btn {
         box-sizing: border-box !important;
     }
 
+    #upload-col #search-btn button {
+        font-weight: 400 !important;
+    }
+
     #finish-row {
         width: 100% !important;
         max-width: 100% !important;
@@ -3205,6 +3206,36 @@ body:not(.dressa-main-active) #submit-btn {
     padding: 0 !important;
     margin: 0 !important;
     border: 0 !important;
+}
+
+#dressa-consent-scroll-btn {
+    display: none;
+}
+
+@media (max-width: 1024px) {
+    #dressa-consent-scroll-btn {
+        position: fixed;
+        top: 14px;
+        right: 14px;
+        z-index: 10025;
+        background: rgba(255, 255, 255, 0.82);
+        backdrop-filter: blur(20px) saturate(150%);
+        -webkit-backdrop-filter: blur(20px) saturate(150%);
+        border: 1px solid rgba(255, 190, 120, 0.60);
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        color: rgba(155, 65, 8, 0.92);
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(224, 128, 27, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+        display: block;
+        white-space: nowrap;
+    }
+
+    body.dressa-main-active #dressa-consent-scroll-btn {
+        display: none !important;
+    }
 }
 """
 
@@ -3696,6 +3727,21 @@ function ensureGlobalOverlayElements() {
             'beforeend',
             '<div id="search-overlay" aria-hidden="true"><div class="search-overlay-card"><div class="spinner"></div><div class="search-title">Finding similar dresses</div><div class="search-copy">We are matching your upload now.</div></div></div>'
         );
+    }
+
+    if (!document.getElementById('dressa-consent-scroll-btn')) {
+        const scrollBtn = document.createElement('button');
+        scrollBtn.id = 'dressa-consent-scroll-btn';
+        scrollBtn.textContent = 'Accept & continue ↓';
+        scrollBtn.addEventListener('click', () => {
+            const agreeBtn = document.getElementById('agree-btn');
+            if (agreeBtn) {
+                agreeBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            }
+        });
+        document.body.appendChild(scrollBtn);
     }
 }
 
