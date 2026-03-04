@@ -3305,7 +3305,7 @@ function dockMobileSubmitButton() {
     if (!submitHost) return;
     const submitHostIsButton = submitHost.matches('button');
     const mainVisible = isMainAppVisible();
-    const shouldDockOnCompact = false;
+    const shouldDockOnCompact = true;
 
     const submitBtn = submitHostIsButton
         ? submitHost
