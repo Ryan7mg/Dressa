@@ -1266,10 +1266,14 @@ body.dark .gradio-container *,
     color: #191816 !important;
 }
 
+#upload-image,
+#upload-image .block,
 #upload-image .upload-container,
 #upload-image label.upload,
 #upload-image .upload,
-#upload-image .wrap {
+#upload-image .wrap,
+#upload-image .drop-target,
+#upload-image [data-testid="image"] {
     border: none !important;
     outline: none !important;
     box-shadow: none !important;
@@ -1491,8 +1495,8 @@ html .selection-badge,
 #upload-image .image-container {
     border-radius: 18px;
     overflow: hidden;
-    border: 1px solid rgba(232, 220, 207, 0.95);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+    border: none !important;
+    box-shadow: none !important;
 }
 
 #upload-image .image-preview,
